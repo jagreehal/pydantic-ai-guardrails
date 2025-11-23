@@ -1,0 +1,47 @@
+version: 1
+
+settings:
+  parallel: true
+  on_block: raise
+  telemetry: false
+
+input:
+  version: 1
+  guardrails:
+    - name: length_limit
+      config:
+        max_chars: 500
+        max_tokens: 100
+
+    - name: pii_detector
+      config:
+        detect_types:
+          - email
+          - phone
+          - ssn
+        action: block
+
+    - name: prompt_injection
+      config:
+        sensitivity: medium
+        action: block
+
+output:
+  version: 1
+  guardrails:
+    - name: min_length
+      config:
+        min_chars: 20
+        min_words: 5
+
+    - name: secret_redaction
+      config:
+        patterns:
+          - openai_api_key
+          - github_token
+          - aws_access_key
+
+    - name: hallucination_detector
+      config:
+        check_uncertainty: true
+        check_suspicious_data: true

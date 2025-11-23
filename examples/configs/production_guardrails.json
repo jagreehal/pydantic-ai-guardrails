@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "settings": {
+    "parallel": true,
+    "on_block": "raise",
+    "telemetry": true
+  },
+  "input": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "length_limit",
+        "config": {
+          "max_chars": 1000,
+          "max_tokens": 200
+        }
+      },
+      {
+        "name": "pii_detector",
+        "config": {
+          "detect_types": ["email", "phone", "ssn", "credit_card"],
+          "action": "block"
+        }
+      },
+      {
+        "name": "prompt_injection",
+        "config": {
+          "sensitivity": "high",
+          "action": "block"
+        }
+      },
+      {
+        "name": "toxicity_detector",
+        "config": {
+          "categories": ["profanity", "hate_speech", "threats"],
+          "use_ml": false
+        }
+      }
+    ]
+  },
+  "output": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "min_length",
+        "config": {
+          "min_chars": 20,
+          "min_words": 5,
+          "min_sentences": 1
+        }
+      },
+      {
+        "name": "secret_redaction",
+        "config": {
+          "patterns": [
+            "openai_api_key",
+            "github_token",
+            "aws_access_key",
+            "private_key"
+          ]
+        }
+      },
+      {
+        "name": "toxicity_filter",
+        "config": {
+          "categories": ["profanity", "hate_speech", "offensive"],
+          "use_ml": false
+        }
+      },
+      {
+        "name": "hallucination_detector",
+        "config": {
+          "check_uncertainty": true,
+          "check_suspicious_data": true,
+          "require_confidence": false
+        }
+      }
+    ]
+  }
+}
