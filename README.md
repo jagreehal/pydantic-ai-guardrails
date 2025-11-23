@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Pydantic AI Guardrails</h1>
-  <p><em>Production-grade guardrails for <a href="https://ai.pydantic.dev/">Pydantic AI</a> agents</em></p>
+  <p><em>Guardrails for <a href="https://ai.pydantic.dev/">Pydantic AI</a> agents</em></p>
 </div>
 
 <div align="center">
