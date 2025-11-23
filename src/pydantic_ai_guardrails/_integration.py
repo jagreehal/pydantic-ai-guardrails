@@ -286,7 +286,8 @@ def with_guardrails(
                 )
 
                 # Run output guardrails and collect violations
-                output_str = str(run_result.data) if not isinstance(run_result.data, str) else run_result.data
+                output_data = run_result.output if hasattr(run_result, 'output') else run_result.data
+                output_str = str(output_data) if not isinstance(output_data, str) else output_data
                 output_size = len(output_str)
                 violations: list[tuple[str, Any]] = []
 
@@ -294,7 +295,7 @@ def with_guardrails(
                     # Execute in parallel
                     results = await execute_output_guardrails_parallel(
                         list(output_guardrails),
-                        run_result.data,
+                        output_data,
                         output_context,
                     )
                     for guardrail_name, result in results:
@@ -315,7 +316,7 @@ def with_guardrails(
                             guardrail_name, "output", output_size
                         ):
                             start_time = time.perf_counter()
-                            result = await output_guardrail.validate(run_result.data, output_context)
+                            result = await output_guardrail.validate(output_data, output_context)
                             duration_ms = (time.perf_counter() - start_time) * 1000
 
                             telemetry.record_validation_result(guardrail_name, result, duration_ms)

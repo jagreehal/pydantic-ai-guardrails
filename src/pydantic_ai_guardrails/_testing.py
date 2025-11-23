@@ -346,7 +346,7 @@ class MockAgent:
             raise self.raise_error
 
         # Return mock result
-        return MockRunResult(data=self.response)
+        return MockRunResult(output=self.response)
 
     def run_sync(
         self,
@@ -384,8 +384,17 @@ class MockAgent:
 class MockRunResult:
     """Mock result from agent.run()."""
 
-    data: str
-    """The response data."""
+    output: str
+    """The response output."""
+
+    @property
+    def data(self) -> str:
+        """Backward compatibility property for old API."""
+        return self.output
+
+    def all_messages(self) -> list[Any]:
+        """Return all messages (mock implementation)."""
+        return []
 
 
 # ============================================================================
