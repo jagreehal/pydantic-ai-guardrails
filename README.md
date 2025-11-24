@@ -46,6 +46,152 @@ result = await guarded_agent.run('Your prompt here')
 
 _(This example is complete, it can be run "as is")_
 
+## Flexible Guardrail Ecosystem
+
+Pydantic AI Guardrails works seamlessly with **built-in guardrails**, **llm-guard**, **autoevals**, and **your own custom guardrails**. Mix and match to build the perfect security stack for your needs.
+
+### Built-in Guardrails
+
+Fast, zero-dependency guardrails that work out of the box:
+
+```python
+from pydantic_ai_guardrails.guardrails.input import (
+    length_limit,
+    pii_detector,
+    prompt_injection,
+    toxicity_detector,
+)
+from pydantic_ai_guardrails.guardrails.output import (
+    secret_redaction,
+    min_length,
+    json_validator,
+)
+
+guarded_agent = with_guardrails(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=1000),
+        pii_detector(),
+        prompt_injection(),
+    ],
+    output_guardrails=[
+        secret_redaction(),
+        min_length(min_chars=20),
+    ],
+)
+```
+
+### llm-guard Integration
+
+Use battle-tested ML models from [llm-guard](https://github.com/laiyer-ai/llm-guard) for advanced threat detection:
+
+```python
+from llm_guard.input_scanners import PromptInjection, Toxicity
+from llm_guard.output_scanners import Sensitive, Bias
+from examples.llm_guard.llm_guard_basic import (
+    llm_guard_input_scanner,
+    llm_guard_output_scanner,
+)
+
+guarded_agent = with_guardrails(
+    agent,
+    input_guardrails=[
+        llm_guard_input_scanner(
+            PromptInjection(threshold=0.7),
+            severity="critical"
+        ),
+        llm_guard_input_scanner(
+            Toxicity(threshold=0.5),
+            severity="high"
+        ),
+    ],
+    output_guardrails=[
+        llm_guard_output_scanner(
+            Sensitive(entity_types=["EMAIL", "PHONE", "SSN"]),
+            severity="critical"
+        ),
+    ],
+)
+```
+
+### autoevals Integration
+
+Use [autoevals](https://github.com/pydantic/autoevals) for LLM-powered quality checks:
+
+```python
+from examples.autoevals.autoevals_factuality import factuality_guardrail
+from examples.autoevals.autoevals_moderation import autoevals_evaluator_guardrail
+from autoevals.llm import Moderation
+
+guarded_agent = with_guardrails(
+    agent,
+    output_guardrails=[
+        factuality_guardrail(threshold=0.7),
+        autoevals_evaluator_guardrail(
+            Moderation,
+            threshold=0.5
+        ),
+    ],
+)
+```
+
+### Custom Guardrails
+
+Create your own guardrails with full type safety:
+
+```python
+from pydantic_ai_guardrails import GuardrailResult, InputGuardrail, OutputGuardrail
+
+async def check_brand_mentions(prompt: str) -> GuardrailResult:
+    """Block mentions of competitor brands."""
+    competitors = ["competitor_a", "competitor_b"]
+    if any(brand.lower() in prompt.lower() for brand in competitors):
+        return {
+            'tripwire_triggered': True,
+            'message': 'Competitor brand mentioned',
+            'severity': 'medium',
+        }
+    return {'tripwire_triggered': False}
+
+custom_guardrail = InputGuardrail(check_brand_mentions)
+
+guarded_agent = with_guardrails(
+    agent,
+    input_guardrails=[custom_guardrail],
+)
+```
+
+### Multi-Layer Enterprise Security
+
+Combine all three approaches for enterprise-grade protection. See [`examples/enterprise_security.py`](examples/enterprise_security.py) for a complete example:
+
+```python
+# Layer 1: Native guardrails (fast, zero-dependency)
+native_input = [
+    length_limit(max_chars=2000),
+    blocked_keywords(keywords=["password", "secret"]),
+]
+
+# Layer 2: llm-guard (battle-tested ML)
+llm_guard_input = [
+    llm_guard_input_scanner(PromptInjection(threshold=0.7)),
+    llm_guard_input_scanner(Toxicity(threshold=0.5)),
+]
+
+# Layer 3: autoevals (LLM-powered quality)
+autoevals_output = [
+    factuality_guardrail(threshold=0.7),
+]
+
+# Combine all layers
+guarded_agent = with_guardrails(
+    agent,
+    input_guardrails=native_input + llm_guard_input,
+    output_guardrails=autoevals_output,
+    parallel=True,  # Run guardrails in parallel
+)
+```
+
 ## Why Use This Library?
 
 **"Can't I just use Pydantic AI's `output_type` and output functions?"**
