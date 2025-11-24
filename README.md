@@ -46,7 +46,7 @@ result = await guarded_agent.run('Your prompt here')
 
 _(This example is complete, it can be run "as is")_
 
-## Flexible Guardrail Ecosystem
+## Bring Your Own Guardrails
 
 Pydantic AI Guardrails works seamlessly with **built-in guardrails**, **llm-guard**, **autoevals**, and **your own custom guardrails**. Mix and match to build the perfect security stack for your needs.
 
@@ -116,7 +116,7 @@ guarded_agent = with_guardrails(
 
 ### autoevals Integration
 
-Use [autoevals](https://github.com/pydantic/autoevals) for LLM-powered quality checks:
+Use [autoevals](https://www.braintrust.dev/docs/reference/autoevals/python-api) for LLM-powered quality checks:
 
 ```python
 from examples.autoevals.autoevals_factuality import factuality_guardrail
