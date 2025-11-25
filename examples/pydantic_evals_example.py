@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name, setup_api_config
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import OutputGuardrailViolation, create_context, with_guardrails
 
 # Configure logging
 logging.basicConfig(
@@ -160,10 +160,17 @@ async def example_output_is_instance():
     try:
         from pydantic_ai_guardrails.evals import output_is_instance
 
+        string_guard = output_is_instance("str")
+        dict_guard = output_is_instance("dict")
+
+        string_pass = await string_guard.validate("Thank you!", create_context())
+        dict_fail = await dict_guard.validate("This is not a dict", create_context())
+
         print("Type checking example:")
         print("  • output_is_instance('str') - Ensure string output")
+        print(f"    → Passed? {not string_pass['tripwire_triggered']}")
         print("  • output_is_instance('dict') - Ensure dict output")
-        print("  • output_is_instance('list') - Ensure list output")
+        print(f"    → Passed? {not dict_fail['tripwire_triggered']}")
         print()
         print("Useful for:")
         print("  ✓ JSON/structured response validation")

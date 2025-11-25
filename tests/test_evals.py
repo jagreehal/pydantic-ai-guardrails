@@ -1,20 +1,21 @@
 """Tests for pydantic_evals integration."""
 
-import pytest
-
-# Skip all tests in this module if pydantic_evals is not installed
-pytest.importorskip("pydantic_evals")
-
 from dataclasses import dataclass
 
-from pydantic_evals.evaluators import (
-    Contains,
-    Equals,
-    EqualsExpected,
-    Evaluator,
-    EvaluatorContext,
-    IsInstance,
-)
+import pytest
+
+try:
+    from pydantic_evals.evaluators import (
+        Contains,
+        Equals,
+        Evaluator,
+        EvaluatorContext,
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    pytest.skip(
+        "pydantic_evals is required for eval integration tests",
+        allow_module_level=True,
+    )
 
 from pydantic_ai_guardrails.evals import (
     evaluator_guardrail,
