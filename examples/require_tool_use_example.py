@@ -83,7 +83,7 @@ async def example_require_any_tool():
         print("Query: What's the weather in San Francisco?\n")
         result = await guarded_agent.run("What's the weather in San Francisco?")
         print("\n✅ Success! Tool was used.")
-        print(f"Response: {result.data}")
+        print(f"Response: {result.output}")
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed: {e.result.get('message')}")
 
@@ -109,7 +109,7 @@ async def example_require_specific_tool():
         print("Query: Search for the latest AI developments\n")
         result = await guarded_agent.run("Search for the latest AI developments")
         print("\n✅ Success! search_web was used.")
-        print(f"Response: {result.data}")
+        print(f"Response: {result.output}")
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed: {e.result.get('message')}")
         print(f"Tools called: {e.result.get('metadata', {}).get('tools_called', [])}")
@@ -139,7 +139,7 @@ async def example_require_any_of_multiple():
         print("Query: What's the weather like today?\n")
         result = await guarded_agent.run("What's the weather like today?")
         print("\n✅ Success! One of the required tools was used.")
-        print(f"Response: {result.data}")
+        print(f"Response: {result.output}")
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed: {e.result.get('message')}")
 
@@ -172,7 +172,7 @@ async def example_require_all_tools():
             "First, search for weather APIs, then check the weather in New York"
         )
         print("\n✅ Success! All required tools were used.")
-        print(f"Response: {result.data}")
+        print(f"Response: {result.output}")
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed: {e.result.get('message')}")
         print(
@@ -198,7 +198,7 @@ async def example_retry_on_no_tool():
         print("Query: What is 123 * 456?\n")
         result = await guarded_agent.run("What is 123 * 456?")
         print("\n✅ Success! calculate tool was used.")
-        print(f"Response: {result.data}")
+        print(f"Response: {result.output}")
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed after {e.retry_count} retries")
         print(f"Message: {e.result.get('message')}")
@@ -221,7 +221,7 @@ async def example_log_mode():
 
     print("Query: What is the capital of France?\n")
     result = await guarded_agent.run("What is the capital of France?")
-    print(f"\nResponse (even if search_web wasn't used): {result.data}")
+    print(f"\nResponse (even if search_web wasn't used): {result.output}")
     print("Check logs above to see if tool usage violation was logged.")
 
 

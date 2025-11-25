@@ -12,6 +12,7 @@ import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from ._context import create_context
 from ._guardrails import AgentDepsT, InputGuardrail, OutputDataT, OutputGuardrail
 from ._parallel import (
     execute_input_guardrails_parallel,
@@ -205,11 +206,10 @@ def with_guardrails(
         """Wrapped run method with guardrail validation."""
         telemetry = get_telemetry()
 
-        # Build minimal run context for validation
-        # Note: This is a simplified context - full integration would use
-        # the actual RunContext from the agent execution
+        # Build guardrail context for validation
         deps = kwargs.get("deps")
-        run_context = _build_minimal_context(agent, deps)
+        prompt_str: str | None = str(user_prompt) if user_prompt is not None else None
+        ctx = create_context(deps=deps, prompt=prompt_str)
 
         # Create span for entire agent execution with guardrails
         with telemetry.span_agent_execution(
@@ -217,15 +217,14 @@ def with_guardrails(
         ):
             # Run input guardrails
             if user_prompt is not None:
-                prompt_str = str(user_prompt) if not isinstance(user_prompt, str) else user_prompt
-                input_size = len(prompt_str)
+                input_size = len(prompt_str) if prompt_str else 0
 
                 if parallel and len(input_guardrails) > 1:
                     # Execute in parallel
                     results = await execute_input_guardrails_parallel(
                         list(input_guardrails),
                         user_prompt,
-                        run_context,
+                        ctx,
                     )
                     for guardrail_name, result in results:
                         if result["tripwire_triggered"]:
@@ -246,7 +245,7 @@ def with_guardrails(
                             guardrail_name, "input", input_size
                         ):
                             start_time = time.perf_counter()
-                            result = await guardrail.validate(user_prompt, run_context)
+                            result = await guardrail.validate(user_prompt, ctx)
                             duration_ms = (time.perf_counter() - start_time) * 1000
 
                             telemetry.record_validation_result(
@@ -281,8 +280,10 @@ def with_guardrails(
                 run_result = await cast(Any, original_run)(current_prompt, **kwargs)
 
                 # Build enhanced context with message history for output guardrails
-                output_context = _build_minimal_context(
-                    agent, deps, messages=run_result.all_messages()
+                output_ctx = create_context(
+                    deps=deps,
+                    messages=run_result.all_messages(),
+                    prompt=prompt_str,
                 )
 
                 # Run output guardrails and collect violations
@@ -296,7 +297,7 @@ def with_guardrails(
                     results = await execute_output_guardrails_parallel(
                         list(output_guardrails),
                         output_data,
-                        output_context,
+                        output_ctx,
                     )
                     for guardrail_name, result in results:
                         if result["tripwire_triggered"]:
@@ -316,7 +317,7 @@ def with_guardrails(
                             guardrail_name, "output", output_size
                         ):
                             start_time = time.perf_counter()
-                            result = await output_guardrail.validate(output_data, output_context)
+                            result = await output_guardrail.validate(output_data, output_ctx)
                             duration_ms = (time.perf_counter() - start_time) * 1000
 
                             telemetry.record_validation_result(guardrail_name, result, duration_ms)
@@ -400,27 +401,3 @@ def with_guardrails(
     return agent
 
 
-def _build_minimal_context(_agent: Any, deps: Any, messages: Any = None) -> Any:
-    """Build a minimal context object for guardrail validation.
-
-    This is a simplified context that provides basic dependency access.
-    Full native integration would use the actual RunContext from agent execution.
-
-    Args:
-        agent: The Pydantic AI agent.
-        deps: User-provided dependencies.
-        messages: Optional message history from agent execution.
-
-    Returns:
-        A minimal context object with deps and messages attributes.
-    """
-    from dataclasses import dataclass
-
-    @dataclass
-    class MinimalContext:
-        """Minimal context for guardrail validation."""
-
-        deps: Any
-        messages: Any = None
-
-    return MinimalContext(deps=deps, messages=messages)

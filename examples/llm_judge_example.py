@@ -72,7 +72,7 @@ async def example_single_criterion():
 
         result = await guarded_agent.run("How do I reset my password?")
         print("✅ Response passed judge evaluation:")
-        print(f"   {result.data[:100]}...\n")
+        print(f"   {result.output[:100]}...\n")
     except OutputGuardrailViolation as e:
         print("❌ Response blocked by judge:")
         print(f"   Reason: {e.result.get('message')}")
@@ -115,7 +115,7 @@ async def example_multiple_criteria():
         print("Asking: What are your business hours?\n")
         result = await guarded_agent.run("What are your business hours?")
         print("✅ Response passed all criteria")
-        print(f"   {result.data[:100]}...\n")
+        print(f"   {result.output[:100]}...\n")
     except OutputGuardrailViolation as e:
         print("❌ Response failed criteria:")
         print(f"   {e.result.get('message')}")

@@ -61,7 +61,7 @@ async def example_live_agent():
         print("Question 1: What is the capital of France?\n")
         result = await guarded_agent.run("What is the capital of France?")
         print("✅ Response passed (no refusal):")
-        print(f"   {result.data[:100]}...\n")
+        print(f"   {result.output[:100]}...\n")
     except OutputGuardrailViolation as e:
         print("❌ Response blocked - refusal detected:")
         print(f"   Pattern: {e.result.get('metadata', {}).get('refusal_patterns', [])}")
@@ -72,7 +72,7 @@ async def example_live_agent():
         print("Question 2: Can you help me with medical advice?\n")
         result = await guarded_agent.run("Can you help me with medical advice?")
         print("✅ Response passed (provided helpful answer):")
-        print(f"   {result.data[:100]}...\n")
+        print(f"   {result.output[:100]}...\n")
     except OutputGuardrailViolation as e:
         print("❌ Response blocked - refusal detected:")
         print(f"   Pattern: {e.result.get('metadata', {}).get('refusal_patterns', [])}")

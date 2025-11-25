@@ -65,7 +65,7 @@ async def example_live_agent():
         print("Asking: Please provide a contact email for customer support.\n")
         result = await guarded_agent.run("Please provide a contact email for customer support.")
         print("✅ Response contains email:")
-        print(f"   {result.data}\n")
+        print(f"   {result.output}\n")
     except OutputGuardrailViolation as e:
         print("❌ Response blocked - no email found:")
         print(f"   {e.result.get('message')}\n")

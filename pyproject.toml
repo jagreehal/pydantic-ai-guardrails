@@ -69,8 +69,11 @@ telemetry = [
     "opentelemetry-api>=1.38.0",
     "opentelemetry-sdk>=1.38.0",
 ]
+evals = [
+    "pydantic-evals>=0.0.1",
+]
 all = [
-    "pydantic-ai-guardrails[pii-detection,toxicity-detection,prompt-injection,telemetry]",
+    "pydantic-ai-guardrails[pii-detection,toxicity-detection,prompt-injection,telemetry,evals]",
 ]
 
 [build-system]

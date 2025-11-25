@@ -133,7 +133,7 @@ async def demo_input_scanners():
 
         try:
             result = await guarded_agent.run(test['prompt'])
-            print(f"✓ Response: {result.data}")
+            print(f"✓ Response: {result.output}")
         except Exception as e:
             print(f"✗ Blocked: {str(e)[:100]}")
 

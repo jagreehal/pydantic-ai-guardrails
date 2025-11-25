@@ -20,6 +20,7 @@ pip install pydantic-ai-guardrails
 Optional dependencies:
 ```bash
 pip install pydantic-ai-guardrails[telemetry]  # Logfire/OpenTelemetry support
+pip install pydantic-ai-guardrails[evals]      # pydantic_evals integration
 pip install pydantic-ai-guardrails[all]        # All features
 ```
 
@@ -134,6 +135,39 @@ guarded_agent = with_guardrails(
     ],
 )
 ```
+
+### pydantic_evals Integration
+
+Use [pydantic_evals](https://ai.pydantic.dev/evals/) evaluators directly as guardrails:
+
+```bash
+pip install pydantic-ai-guardrails[evals]
+```
+
+```python
+from pydantic_evals.evaluators import Contains
+from pydantic_ai_guardrails.evals import evaluator_guardrail, output_contains
+
+# Wrap any evaluator as a guardrail
+guard = evaluator_guardrail(
+    Contains(value="thank you"),
+    kind="output",
+)
+
+# Or use convenience functions
+guard = output_contains("thank you", case_sensitive=False)
+
+guarded_agent = with_guardrails(
+    agent,
+    output_guardrails=[guard],
+)
+```
+
+Available convenience adapters:
+- `output_contains()` - Check if output contains a value
+- `output_equals()` - Check exact equality
+- `output_is_instance()` - Validate output type
+- `output_llm_judge()` - LLM-as-a-judge evaluation (pydantic_evals version)
 
 ### Custom Guardrails
 
@@ -291,7 +325,7 @@ configure_telemetry(enabled=True)
 - **OpenTelemetry integration** - Full observability with Logfire/OpenTelemetry spans
 - **Flexible blocking modes** - Choose to raise exceptions, log warnings, or silently block
 - **OpenAI Guardrails compatibility** - Load configurations from OpenAI Guardrails UI
-- **RunContext integration** - Access dependencies and context within guardrails
+- **GuardrailContext integration** - Access dependencies, messages, and prompt within guardrails
 - **Type-safe** - Full type hints and IDE autocomplete throughout
 
 ## Real-World Examples
@@ -452,21 +486,21 @@ flowchart LR
 
 Guardrails are non-invasive - your existing telemetry, logging, and error handling continue to work.
 
-## Usage with RunContext
+## Usage with GuardrailContext
 
-Guardrails support dependency injection via `RunContext`:
+Guardrails support dependency injection via `GuardrailContext`, which follows pydantic_ai's patterns:
 
 ```python
 from dataclasses import dataclass
-from pydantic_ai import Agent, RunContext
-from pydantic_ai_guardrails import InputGuardrail, GuardrailResult
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import InputGuardrail, GuardrailContext, GuardrailResult
 
 @dataclass
 class SecurityDeps:
     blocked_users: set[str]
     user_id: str
 
-async def check_user(ctx: RunContext[SecurityDeps], prompt: str) -> GuardrailResult:
+async def check_user(ctx: GuardrailContext[SecurityDeps], prompt: str) -> GuardrailResult:
     if ctx.deps.user_id in ctx.deps.blocked_users:
         return {
             'tripwire_triggered': True,
@@ -485,6 +519,33 @@ result = await guarded_agent.run(
     'Hello',
     deps=SecurityDeps(blocked_users={'user_123'}, user_id='user_456')
 )
+```
+
+### GuardrailContext Fields
+
+The `GuardrailContext` provides access to:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `deps` | `DepsT` | User-provided dependencies passed to the agent |
+| `messages` | `list[ModelMessage] \| None` | Message history (output guardrails only) |
+| `prompt` | `str \| None` | The original user prompt |
+
+```python
+async def check_with_context(ctx: GuardrailContext[MyDeps], output: str) -> GuardrailResult:
+    # Access dependencies
+    api_client = ctx.deps.api_client
+
+    # Access message history (output guardrails)
+    if ctx.messages:
+        for msg in ctx.messages:
+            # Inspect conversation history
+            pass
+
+    # Access original prompt
+    original_prompt = ctx.prompt
+
+    return {'tripwire_triggered': False}
 ```
 
 ## Built-in Guardrails
@@ -686,12 +747,12 @@ guarded_agent = with_guardrails(
 )
 ```
 
-### Using RunContext
+### Using GuardrailContext
 
 Access dependencies and context within guardrails:
 
 ```python
-from pydantic_ai import RunContext
+from pydantic_ai_guardrails import GuardrailContext
 from dataclasses import dataclass
 
 @dataclass
@@ -699,7 +760,7 @@ class AppDeps:
     user_tier: str
     max_tokens: int
 
-async def check_token_limit(ctx: RunContext[AppDeps], prompt: str) -> GuardrailResult:
+async def check_token_limit(ctx: GuardrailContext[AppDeps], prompt: str) -> GuardrailResult:
     """Enforce per-tier token limits."""
     estimated_tokens = len(prompt.split()) * 1.3  # Rough estimate
 
@@ -886,6 +947,7 @@ Test custom guardrails:
 from pydantic_ai_guardrails import (
     assert_guardrail_passes,
     assert_guardrail_blocks,
+    create_test_context,
 )
 
 async def test_my_guardrail():
@@ -900,17 +962,29 @@ async def test_my_guardrail():
         "forbidden prompt",
         expected_severity="high"
     )
+
+    # Test with custom context (for guardrails that use deps)
+    ctx = create_test_context(deps={"user_tier": "premium"})
+    await assert_guardrail_passes(guardrail, "prompt", ctx=ctx)
 ```
 
 ## API Reference
+
+### Core Types
+
+| Type | Purpose |
+|------|---------|
+| `InputGuardrail` | Wrapper for input validation functions |
+| `OutputGuardrail` | Wrapper for output validation functions |
+| `GuardrailContext[DepsT]` | Context passed to guardrail functions with deps, messages, prompt |
+| `GuardrailResult` | TypedDict returned by guardrail functions |
 
 ### Core Functions
 
 | Function | Purpose |
 |----------|---------|
 | `with_guardrails()` | Wrap agent with input/output guardrails |
-| `InputGuardrail` | Create input guardrail wrapper |
-| `OutputGuardrail` | Create output guardrail wrapper |
+| `create_context()` | Create a GuardrailContext for testing |
 | `configure_telemetry()` | Enable global telemetry |
 | `create_guarded_agent_from_config()` | Load guardrails from OpenAI config |
 
@@ -932,9 +1006,11 @@ async def test_my_guardrail():
 | `max_retries` | `int` | `0` | Auto-retry on output violations |
 
 See implementation details in:
-- [`src/pydantic_ai_guardrails/_integration.py`](./src/pydantic_ai_guardrails/_integration.py)
-- [`src/pydantic_ai_guardrails/guardrails/input.py`](./src/pydantic_ai_guardrails/guardrails/input.py)
-- [`src/pydantic_ai_guardrails/guardrails/output.py`](./src/pydantic_ai_guardrails/guardrails/output.py)
+- [`src/pydantic_ai_guardrails/_context.py`](./src/pydantic_ai_guardrails/_context.py) - GuardrailContext definition
+- [`src/pydantic_ai_guardrails/_guardrails.py`](./src/pydantic_ai_guardrails/_guardrails.py) - InputGuardrail/OutputGuardrail classes
+- [`src/pydantic_ai_guardrails/_integration.py`](./src/pydantic_ai_guardrails/_integration.py) - with_guardrails() wrapper
+- [`src/pydantic_ai_guardrails/guardrails/input/`](./src/pydantic_ai_guardrails/guardrails/input/) - Built-in input guardrails
+- [`src/pydantic_ai_guardrails/guardrails/output/`](./src/pydantic_ai_guardrails/guardrails/output/) - Built-in output guardrails
 
 ## Compatibility
 
