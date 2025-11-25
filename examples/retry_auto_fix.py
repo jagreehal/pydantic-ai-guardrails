@@ -163,7 +163,7 @@ async def example_deterministic_retry():
         )
 
         print(f"\n✅ Success after {attempt_count['value']} attempt(s)!")
-        print(f"Output: {result.data[:200]}...")
+        print(f"Output: {result.output[:200]}...")
 
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed after {e.retry_count} retries")
@@ -190,7 +190,7 @@ async def example_pii_auto_fix():
         )
 
         print("\n✅ Success! Clean output after retry:")
-        print(result.data)
+        print(result.output)
 
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed after {e.retry_count} retries:")
@@ -220,7 +220,7 @@ async def example_quality_auto_fix():
         )
 
         print("\n✅ Success! Quality output after retry:")
-        print(result.data)
+        print(result.output)
 
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed after {e.retry_count} retries:")
@@ -252,7 +252,7 @@ async def example_multiple_guardrails():
         )
 
         print("\n✅ Success! Clean, quality output:")
-        print(result.data)
+        print(result.output)
 
     except OutputGuardrailViolation as e:
         print(f"\n❌ Failed after {e.retry_count} retries:")
@@ -280,7 +280,7 @@ async def example_no_retry_needed():
         )
 
         print("\n✅ Success on first try (no retry needed):")
-        print(result.data)
+        print(result.output)
 
     except OutputGuardrailViolation as e:
         print(f"\n❌ Unexpected failure: {e}")

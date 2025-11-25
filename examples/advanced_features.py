@@ -84,7 +84,7 @@ async def example_telemetry():
         result = await guarded_agent.run("What is the capital of France?")
         duration_ms = (time.perf_counter() - start_time) * 1000
         print(f"✓ Agent completed successfully in {duration_ms:.2f}ms")
-        print(f"  Result: {result.data}")
+        print(f"  Result: {result.output}")
     except Exception as e:
         duration_ms = (time.perf_counter() - start_time) * 1000
         print(f"✗ Agent blocked after {duration_ms:.2f}ms")
@@ -304,7 +304,7 @@ async def example_production():
             else:
                 print(f"     ✓ Passed ({duration_ms:.2f}ms)")
                 # Truncate long outputs
-                output = str(result.data)
+                output = str(result.output)
                 if len(output) > 100:
                     output = output[:100] + "..."
                 print(f"     Output: {output}")

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-11-25
+
+### Added
+
+- Introduced `GuardrailContext` plus `create_context()`/`create_test_context()` helpers so guardrail functions can access agent dependencies, prompts, and message history without custom plumbing.
+- Added full [`pydantic_evals`](https://github.com/pydantic/pydantic-evals) integration, including the `pydantic_ai_guardrails.evals` module, `evaluator_guardrail()` wrapper, convenience adapters (e.g., `output_contains`, `output_equals`, `output_llm_judge`), dataset-to-test-suite helpers, and a dedicated `examples/pydantic_evals_example.py`.
+- Documented the new context and evaluator workflows throughout the README/Quick Start guides to show how to wire them into real agents.
+
+### Changed
+
+- `with_guardrails()` now constructs and passes `GuardrailContext` instances to every guardrail run, and the parallel executor honors the shared context, unlocking dependency injection across both input and output guardrails.
+- Testing utilities gained context-aware assertions (`assert_guardrail_passes/blocks/result`) so custom guardrails can be validated with realistic dependencies.
+- Added the optional `evals` extra (`pip install pydantic-ai-guardrails[evals]`) and rolled it into the `all` meta-extra for one-shot installs.
+- Removed the outdated `pydantic_ai_guardrails.md` design document to reduce duplication—its content now lives in the README.
+
 ## [0.1.0] - 2025-11-23 - Initial Release
 
 ### Added
@@ -86,9 +101,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Documentation**:
   - Comprehensive README with quick start guide
-  - Design document (`pydantic_ai_guardrails.md`)
-  - Usage examples and integration guides
-  - Architecture documentation
 
 ### Technical Details
 

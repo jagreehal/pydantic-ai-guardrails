@@ -64,7 +64,7 @@ async def example_simple_config():
     print("\n📝 Testing with normal prompt...")
     try:
         result = await guarded_agent.run("What is machine learning?")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except Exception as e:
         print(f"✗ Error: {e}")
 
@@ -72,7 +72,7 @@ async def example_simple_config():
     print("\n📝 Testing with violating prompt (PII)...")
     try:
         result = await guarded_agent.run("My email is test@example.com")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except InputGuardrailViolation as e:
         print(f"✓ Blocked as expected: {e.guardrail_name}")
         print(f"  Message: {e.result.get('message')}")
@@ -102,7 +102,7 @@ async def example_one_line_config():
     print("\n📝 Testing agent...")
     try:
         result = await guarded_agent.run("Hello, how are you?")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except Exception as e:
         print(f"✗ Error: {e}")
 
@@ -131,7 +131,7 @@ async def example_yaml_config():
         # Test
         print("\n📝 Testing agent...")
         result = await guarded_agent.run("What is Python?")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
 
     except ImportError:
         print("⚠️  YAML support requires PyYAML")
@@ -248,7 +248,7 @@ async def example_dynamic_config():
     print("\n📝 Testing agent...")
     try:
         result = await guarded_agent.run("Test prompt")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except Exception as e:
         print(f"✗ Error: {e}")
 

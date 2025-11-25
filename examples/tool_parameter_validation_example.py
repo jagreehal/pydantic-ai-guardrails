@@ -163,7 +163,7 @@ async def example_schema_validation():
         print("Query: What's the weather in Paris?\n")
         result = await guarded_agent.run("What's the weather in Paris?")
         print("\n✅ Success! Parameters valid.")
-        print(f"Response: {result.data}")
+        print(f"Response: {result.output}")
     except OutputGuardrailViolation as e:
         print(f"\n❌ Blocked: {e.result.get('message')}")
 

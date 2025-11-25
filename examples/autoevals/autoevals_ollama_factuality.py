@@ -145,7 +145,7 @@ async def main():
 
         try:
             result = await guarded_agent.run(test['query'])
-            print(f"✓ Response: {result.data}")
+            print(f"✓ Response: {result.output}")
             print("  (Factuality check passed)")
         except Exception as e:
             print(f"✗ Blocked: {str(e)[:100]}")

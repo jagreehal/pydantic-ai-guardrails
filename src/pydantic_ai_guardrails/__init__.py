@@ -42,6 +42,7 @@ from ._config import (
     load_config,
     load_guardrails_from_config,
 )
+from ._context import GuardrailContext, create_context
 from ._guardrails import (
     AgentDepsT,
     InputGuardrail,
@@ -80,6 +81,7 @@ __all__ = (
     "OutputGuardrail",
     "GuardrailResult",
     "GuardrailResultDict",
+    "GuardrailContext",
     # Function types
     "InputGuardrailFunc",
     "OutputGuardrailFunc",
@@ -87,6 +89,8 @@ __all__ = (
     "AgentDepsT",
     "OutputDataT",
     "MetadataT",
+    # Context utilities
+    "create_context",
     # Exceptions
     "GuardrailViolation",
     "InputGuardrailViolation",

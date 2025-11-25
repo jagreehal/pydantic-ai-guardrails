@@ -69,7 +69,7 @@ class TestAssertGuardrailPasses:
         ctx = create_test_context(deps=Deps(max_length=50))
         guardrail = length_limit(max_chars=100)
 
-        result = await assert_guardrail_passes(guardrail, "Test", context=ctx)
+        result = await assert_guardrail_passes(guardrail, "Test", ctx=ctx)
 
         assert result["tripwire_triggered"] is False
 

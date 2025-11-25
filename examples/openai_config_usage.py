@@ -81,13 +81,13 @@ async def example_2_direct_usage():
     # Test with a safe prompt
     print("\n📝 Testing with safe prompt...")
     result = await guarded_agent.run("What is the capital of France?")
-    print(f"✓ Response: {result.data}")
+    print(f"✓ Response: {result.output}")
 
     # Test with PII (will be blocked by input guardrail)
     print("\n📝 Testing with PII (should be blocked)...")
     try:
         result = await guarded_agent.run("My email is test@example.com")
-        print(f"✓ Response: {result.data}")
+        print(f"✓ Response: {result.output}")
     except Exception as e:
         print(f"🛡️  Blocked: {e}")
 

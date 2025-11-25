@@ -190,7 +190,7 @@ async def run_security_tests():
         try:
             result = await agent.run(test['query'])
             actual = "pass"
-            print(f"✓ Response: {str(result.data)[:60]}...")
+            print(f"✓ Response: {str(result.output)[:60]}...")
         except Exception as e:
             actual = "fail"
             print(f"✗ Blocked: {str(e)[:80]}...")

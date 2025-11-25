@@ -5,7 +5,7 @@ guardrails and validate guardrail behavior.
 
 Example:
     ```python
-    from pydantic_ai_guardrails.testing import (
+    from pydantic_ai_guardrails import (
         assert_guardrail_passes,
         assert_guardrail_blocks,
         create_test_context,
@@ -36,6 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from ._context import GuardrailContext
 from ._guardrails import InputGuardrail, OutputGuardrail
 from ._results import GuardrailResult
 
@@ -52,32 +53,26 @@ __all__ = (
 # Test Context
 # ============================================================================
 
-@dataclass
-class TestContext:
-    """Minimal context for testing guardrails.
 
-    This provides a simple context object that can be used in tests
-    without requiring a full Pydantic AI RunContext.
-
-    Attributes:
-        deps: Optional dependencies for the guardrail.
-    """
-
-    deps: Any = None
-
-
-def create_test_context(deps: Any = None) -> TestContext:
+def create_test_context(
+    deps: Any = None,
+    *,
+    messages: list[Any] | None = None,
+    prompt: str | None = None,
+) -> GuardrailContext[Any]:
     """Create a test context for guardrail testing.
 
     Args:
         deps: Optional dependencies to inject.
+        messages: Optional message history.
+        prompt: Optional original prompt.
 
     Returns:
-        TestContext instance.
+        GuardrailContext instance for testing.
 
     Example:
         ```python
-        from pydantic_ai_guardrails.testing import create_test_context
+        from pydantic_ai_guardrails import create_test_context
 
         # Simple context
         ctx = create_test_context()
@@ -88,9 +83,12 @@ def create_test_context(deps: Any = None) -> TestContext:
             user_id: str
 
         ctx = create_test_context(deps=UserDeps(user_id="test_user"))
+
+        # Context with prompt
+        ctx = create_test_context(prompt="What is the weather?")
         ```
     """
-    return TestContext(deps=deps)
+    return GuardrailContext(deps=deps, messages=messages, prompt=prompt)
 
 
 # ============================================================================
@@ -100,14 +98,14 @@ def create_test_context(deps: Any = None) -> TestContext:
 async def assert_guardrail_passes(
     guardrail: InputGuardrail[Any, Any] | OutputGuardrail[Any, Any, Any],
     input_data: Any,
-    context: Any | None = None,
+    ctx: GuardrailContext[Any] | None = None,
 ) -> GuardrailResult:
     """Assert that a guardrail passes (does not trigger).
 
     Args:
         guardrail: The guardrail to test.
         input_data: The input data to validate.
-        context: Optional context for the guardrail.
+        ctx: Optional context for the guardrail.
 
     Returns:
         The guardrail result.
@@ -117,7 +115,7 @@ async def assert_guardrail_passes(
 
     Example:
         ```python
-        from pydantic_ai_guardrails.testing import assert_guardrail_passes
+        from pydantic_ai_guardrails import assert_guardrail_passes
         from pydantic_ai_guardrails.guardrails.input import length_limit
 
         async def test_short_prompt_passes():
@@ -129,10 +127,10 @@ async def assert_guardrail_passes(
             assert result["tripwire_triggered"] is False
         ```
     """
-    if context is None:
-        context = create_test_context()
+    if ctx is None:
+        ctx = create_test_context()
 
-    result = await guardrail.validate(input_data, context)
+    result = await guardrail.validate(input_data, ctx)
 
     if result["tripwire_triggered"]:
         message = result.get("message", "No message")
@@ -150,7 +148,7 @@ async def assert_guardrail_passes(
 async def assert_guardrail_blocks(
     guardrail: InputGuardrail[Any, Any] | OutputGuardrail[Any, Any, Any],
     input_data: Any,
-    context: Any | None = None,
+    ctx: GuardrailContext[Any] | None = None,
     expected_severity: str | None = None,
 ) -> GuardrailResult:
     """Assert that a guardrail blocks (triggers).
@@ -158,7 +156,7 @@ async def assert_guardrail_blocks(
     Args:
         guardrail: The guardrail to test.
         input_data: The input data to validate.
-        context: Optional context for the guardrail.
+        ctx: Optional context for the guardrail.
         expected_severity: Optional expected severity level.
 
     Returns:
@@ -169,7 +167,7 @@ async def assert_guardrail_blocks(
 
     Example:
         ```python
-        from pydantic_ai_guardrails.testing import assert_guardrail_blocks
+        from pydantic_ai_guardrails import assert_guardrail_blocks
         from pydantic_ai_guardrails.guardrails.input import length_limit
 
         async def test_long_prompt_blocks():
@@ -182,10 +180,10 @@ async def assert_guardrail_blocks(
             assert "length" in result.get("message", "").lower()
         ```
     """
-    if context is None:
-        context = create_test_context()
+    if ctx is None:
+        ctx = create_test_context()
 
-    result = await guardrail.validate(input_data, context)
+    result = await guardrail.validate(input_data, ctx)
 
     if not result["tripwire_triggered"]:
         raise AssertionError(
@@ -207,7 +205,7 @@ async def assert_guardrail_result(
     guardrail: InputGuardrail[Any, Any] | OutputGuardrail[Any, Any, Any],
     input_data: Any,
     expected_result: dict[str, Any],
-    context: Any | None = None,
+    ctx: GuardrailContext[Any] | None = None,
 ) -> GuardrailResult:
     """Assert that a guardrail returns a specific result.
 
@@ -215,7 +213,7 @@ async def assert_guardrail_result(
         guardrail: The guardrail to test.
         input_data: The input data to validate.
         expected_result: Expected result dictionary (partial match).
-        context: Optional context for the guardrail.
+        ctx: Optional context for the guardrail.
 
     Returns:
         The guardrail result.
@@ -225,7 +223,7 @@ async def assert_guardrail_result(
 
     Example:
         ```python
-        from pydantic_ai_guardrails.testing import assert_guardrail_result
+        from pydantic_ai_guardrails import assert_guardrail_result
         from pydantic_ai_guardrails.guardrails.input import pii_detector
 
         async def test_pii_detection():
@@ -241,10 +239,10 @@ async def assert_guardrail_result(
             assert "email" in result["metadata"]["detected_types"]
         ```
     """
-    if context is None:
-        context = create_test_context()
+    if ctx is None:
+        ctx = create_test_context()
 
-    result = await guardrail.validate(input_data, context)
+    result = await guardrail.validate(input_data, ctx)
 
     # Check expected keys
     for key, expected_value in expected_result.items():
@@ -440,19 +438,19 @@ class GuardrailTestCases:
         self,
         input_data: Any,
         description: str = "",
-        context: Any | None = None,
+        ctx: GuardrailContext[Any] | None = None,
     ) -> None:
         """Add a test case that should pass.
 
         Args:
             input_data: Input data for the test.
             description: Optional description of the test case.
-            context: Optional context for the guardrail.
+            ctx: Optional context for the guardrail.
         """
         self._pass_cases.append({
             "input_data": input_data,
             "description": description,
-            "context": context,
+            "ctx": ctx,
         })
 
     def add_block_case(
@@ -460,7 +458,7 @@ class GuardrailTestCases:
         input_data: Any,
         description: str = "",
         expected_severity: str | None = None,
-        context: Any | None = None,
+        ctx: GuardrailContext[Any] | None = None,
     ) -> None:
         """Add a test case that should block.
 
@@ -468,13 +466,13 @@ class GuardrailTestCases:
             input_data: Input data for the test.
             description: Optional description of the test case.
             expected_severity: Expected severity level.
-            context: Optional context for the guardrail.
+            ctx: Optional context for the guardrail.
         """
         self._block_cases.append({
             "input_data": input_data,
             "description": description,
             "expected_severity": expected_severity,
-            "context": context,
+            "ctx": ctx,
         })
 
     async def run_all(
@@ -504,7 +502,7 @@ class GuardrailTestCases:
                 await assert_guardrail_passes(
                     guardrail,
                     case["input_data"],
-                    case["context"],
+                    case["ctx"],
                 )
                 passed += 1
                 if verbose:
@@ -522,7 +520,7 @@ class GuardrailTestCases:
                 await assert_guardrail_blocks(
                     guardrail,
                     case["input_data"],
-                    case["context"],
+                    case["ctx"],
                     case["expected_severity"],
                 )
                 passed += 1

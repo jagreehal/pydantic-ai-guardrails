@@ -88,7 +88,7 @@ async def main() -> None:
     print("\n1. Normal usage (should pass):")
     try:
         result = await guarded_agent.run("What is 2 + 2?")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except (InputGuardrailViolation, OutputGuardrailViolation) as e:
         print(f"✗ Blocked: {e}")
 
@@ -97,7 +97,7 @@ async def main() -> None:
     long_prompt = "a" * 1001
     try:
         result = await guarded_agent.run(long_prompt)
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except InputGuardrailViolation as e:
         print(f"✗ Input Blocked by: {e.guardrail_name}")
         print(f"   Message: {e.result.get('message')}")

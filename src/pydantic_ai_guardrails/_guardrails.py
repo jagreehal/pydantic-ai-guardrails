@@ -14,21 +14,11 @@ from typing import TYPE_CHECKING, Any, Generic, cast
 import anyio
 from typing_extensions import TypeVar
 
+from ._context import GuardrailContext
 from ._results import GuardrailResult
 
 if TYPE_CHECKING:
-    try:
-        from pydantic_ai.tools import RunContext
-    except ImportError:
-        # For type checking when pydantic-ai not installed
-        RunContext = Any  # type: ignore[assignment,misc]
-else:
-    # Import at runtime for proper type support
-    try:
-        from pydantic_ai.tools import RunContext
-    except ImportError:
-        # Fallback when pydantic-ai not installed
-        RunContext = Any  # type: ignore[assignment,misc]
+    pass  # GuardrailContext imported above handles typing
 
 # Define our own type variable for agent dependencies
 AgentDepsT = TypeVar("AgentDepsT", default=None)
@@ -94,8 +84,12 @@ class InputGuardrail(Generic[AgentDepsT, MetadataT]):
 
     Example:
         ```python
-        from pydantic_ai import Agent, RunContext
-        from pydantic_ai_guardrails import InputGuardrail, GuardrailResult
+        from pydantic_ai import Agent
+        from pydantic_ai_guardrails import (
+            InputGuardrail,
+            GuardrailContext,
+            GuardrailResult,
+        )
 
         # Simple guardrail without context
         async def check_length(prompt: str) -> GuardrailResult:
@@ -109,7 +103,7 @@ class InputGuardrail(Generic[AgentDepsT, MetadataT]):
 
         # Guardrail with context access
         async def check_user(
-            ctx: RunContext[dict],
+            ctx: GuardrailContext[dict],
             prompt: str,
         ) -> GuardrailResult:
             user_id = ctx.deps.get('user_id')
@@ -167,13 +161,13 @@ class InputGuardrail(Generic[AgentDepsT, MetadataT]):
     async def validate(
         self,
         user_prompt: str | Sequence[Any],
-        run_context: Any,
+        ctx: GuardrailContext[AgentDepsT],
     ) -> GuardrailResult:
         """Validate input before execution.
 
         Args:
             user_prompt: The user's input prompt to validate.
-            run_context: The current RunContext for dependency access.
+            ctx: The guardrail context for dependency access.
 
         Returns:
             GuardrailResult indicating whether validation passed.
@@ -182,7 +176,7 @@ class InputGuardrail(Generic[AgentDepsT, MetadataT]):
             Exception: If validation function raises an exception.
         """
         # Build args based on whether function takes context
-        args = (run_context, user_prompt) if self._takes_ctx else (user_prompt,)
+        args = (ctx, user_prompt) if self._takes_ctx else (user_prompt,)
 
         # Execute function (async or sync)
         if self._is_async:
@@ -213,8 +207,12 @@ class OutputGuardrail(Generic[AgentDepsT, OutputDataT, MetadataT]):
 
     Example:
         ```python
-        from pydantic_ai import Agent, RunContext
-        from pydantic_ai_guardrails import OutputGuardrail, GuardrailResult
+        from pydantic_ai import Agent
+        from pydantic_ai_guardrails import (
+            OutputGuardrail,
+            GuardrailContext,
+            GuardrailResult,
+        )
 
         # Simple output guardrail
         async def check_secrets(output: str) -> GuardrailResult:
@@ -229,7 +227,7 @@ class OutputGuardrail(Generic[AgentDepsT, OutputDataT, MetadataT]):
 
         # Output guardrail with context
         async def check_compliance(
-            ctx: RunContext[dict],
+            ctx: GuardrailContext[dict],
             output: str,
         ) -> GuardrailResult:
             compliance_mode = ctx.deps.get('compliance_mode')
@@ -286,13 +284,13 @@ class OutputGuardrail(Generic[AgentDepsT, OutputDataT, MetadataT]):
     async def validate(
         self,
         output: OutputDataT,
-        run_context: Any,
+        ctx: GuardrailContext[AgentDepsT],
     ) -> GuardrailResult:
         """Validate output after model returns.
 
         Args:
             output: The model's generated output to validate.
-            run_context: The current RunContext for dependency access.
+            ctx: The guardrail context for dependency access.
 
         Returns:
             GuardrailResult indicating whether validation passed.
@@ -301,7 +299,7 @@ class OutputGuardrail(Generic[AgentDepsT, OutputDataT, MetadataT]):
             Exception: If validation function raises an exception.
         """
         # Build args based on whether function takes context
-        args = (run_context, output) if self._takes_ctx else (output,)
+        args = (ctx, output) if self._takes_ctx else (output,)
 
         # Execute function (async or sync)
         if self._is_async:

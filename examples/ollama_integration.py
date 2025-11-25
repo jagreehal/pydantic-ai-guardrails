@@ -45,7 +45,7 @@ async def test_input_guardrails() -> None:
     print("\n1. Normal prompt (should pass):")
     try:
         result = await guarded_agent.run("What is 2 + 2?")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except (InputGuardrailViolation, OutputGuardrailViolation) as e:
         print(f"✗ Blocked: {e.guardrail_name} - {e.result.get('message')}")
 
@@ -54,7 +54,7 @@ async def test_input_guardrails() -> None:
     long_prompt = "a" * 501
     try:
         result = await guarded_agent.run(long_prompt)
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except InputGuardrailViolation as e:
         print(f"✗ Blocked by: {e.guardrail_name}")
         print(f"   Message: {e.result.get('message')}")
@@ -64,7 +64,7 @@ async def test_input_guardrails() -> None:
     print("\n3. Prompt with PII (should be blocked):")
     try:
         result = await guarded_agent.run("My email is user@example.com, please help")
-        print(f"✓ Success: {result.data}")
+        print(f"✓ Success: {result.output}")
     except InputGuardrailViolation as e:
         print(f"✗ Blocked by: {e.guardrail_name}")
         print(f"   Message: {e.result.get('message')}")
@@ -93,8 +93,8 @@ async def test_output_guardrails() -> None:
     print("\n1. Normal query (should generate adequate response):")
     try:
         result = await guarded_agent.run("Explain what Python is in one sentence")
-        print(f"✓ Success: {result.data}")
-        print(f"   Length: {len(result.data)} chars")
+        print(f"✓ Success: {result.output}")
+        print(f"   Length: {len(result.output)} chars")
     except (InputGuardrailViolation, OutputGuardrailViolation) as e:
         print(f"✗ Blocked: {e.guardrail_name} - {e.result.get('message')}")
 
@@ -102,8 +102,8 @@ async def test_output_guardrails() -> None:
     print("\n2. Query likely to get short response:")
     try:
         result = await guarded_agent.run("Say 'hi'")
-        print(f"✓ Success: {result.data}")
-        print(f"   Length: {len(result.data)} chars")
+        print(f"✓ Success: {result.output}")
+        print(f"   Length: {len(result.output)} chars")
     except OutputGuardrailViolation as e:
         print(f"✗ Blocked by: {e.guardrail_name}")
         print(f"   Message: {e.result.get('message')}")
@@ -151,8 +151,8 @@ async def test_combined_guardrails() -> None:
     try:
         result = await guarded_agent.run("Explain what artificial intelligence is")
         print("✓ Success!")
-        print(f"   Response: {result.data[:100]}...")
-        print(f"   Length: {len(result.data)} chars")
+        print(f"   Response: {result.output[:100]}...")
+        print(f"   Length: {len(result.output)} chars")
     except (InputGuardrailViolation, OutputGuardrailViolation) as e:
         print(f"✗ Blocked: {e.guardrail_name} - {e.result.get('message')}")
 

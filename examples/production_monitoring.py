@@ -274,7 +274,7 @@ async def run_production_agent():
             result = await guarded_agent.run(prompt, deps=deps)
             print("     ✓ Success")
             if hasattr(result, "data"):
-                output = str(result.data)
+                output = str(result.output)
                 if len(output) > 100:
                     output = output[:100] + "..."
                 print(f"     Output: {output}")

@@ -56,7 +56,7 @@ async def main():
     )
 
     result = await guarded.run("What is AI?")
-    print(result.data)
+    print(result.output)
 
 asyncio.run(main())
 ```
@@ -99,7 +99,7 @@ async def main():
     )
 
     result = await guarded.run("What is machine learning?")
-    print(result.data)
+    print(result.output)
 
 asyncio.run(main())
 ```
@@ -155,7 +155,7 @@ async def main():
     )
 
     result = await guarded.run("Your query here")
-    print(result.data)
+    print(result.output)
 
 asyncio.run(main())
 ```
