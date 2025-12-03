@@ -139,7 +139,7 @@ def faithfulness_guardrail(
 async def main():
     """Demo of autoevals RAG guardrails."""
     try:
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
     except ImportError as e:
         print(f"❌ Missing dependency: {e}")
         print("\nInstall with: pip install pydantic-ai pydantic-ai-guardrails autoevals")
@@ -164,7 +164,7 @@ async def main():
         deps_type=dict
     )
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             answer_relevancy_guardrail(threshold=0.7),

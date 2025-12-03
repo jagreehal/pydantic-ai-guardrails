@@ -36,7 +36,7 @@ async def create_secure_agent(model: str = 'openai:gpt-4') -> Any:
         from llm_guard.output_scanners import Toxicity as OutputToxicity
         from pydantic_ai import Agent
 
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         sys.path.insert(0, str(Path(__file__).parent))
         from llm_guard_basic import llm_guard_input_scanner
         from llm_guard_output import llm_guard_output_scanner
@@ -119,7 +119,7 @@ async def create_secure_agent(model: str = 'openai:gpt-4') -> Any:
         ),
     ]
 
-    return with_guardrails(
+    return GuardedAgent(
         base_agent,
         input_guardrails=input_guards,
         output_guardrails=output_guards,

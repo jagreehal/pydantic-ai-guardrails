@@ -36,26 +36,26 @@ def require_tool_use(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import require_tool_use
 
         # Define agent with tools
         agent = Agent('openai:gpt-4o', tools=[search_web, get_weather])
 
         # Ensure at least one tool was called
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[require_tool_use()],
         )
 
         # Ensure specific tool was called
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[require_tool_use(tool_names="search_web")],
         )
 
         # Ensure any of the specified tools was called
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 require_tool_use(
@@ -66,7 +66,7 @@ def require_tool_use(
         )
 
         # Ensure ALL specified tools were called
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 require_tool_use(
@@ -79,7 +79,7 @@ def require_tool_use(
 
     Note:
         This guardrail requires access to message history, which is automatically
-        provided by the with_guardrails() integration. It inspects the conversation
+        provided by the GuardedAgent integration. It inspects the conversation
         messages to find tool call parts and validates against the requirements.
     """
     # Normalize tool_names to a set for easier processing
@@ -99,7 +99,7 @@ def require_tool_use(
                 "message": "Cannot verify tool usage: message history not available in context",
                 "severity": "high",
                 "metadata": {"error": "no_messages_in_context"},
-                "suggestion": "Ensure the guardrail is used with with_guardrails() which provides message context",
+                "suggestion": "Ensure the guardrail is used with GuardedAgent which provides message context",
             }
 
         # Extract all tool calls from message history

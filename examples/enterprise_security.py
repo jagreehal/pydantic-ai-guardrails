@@ -39,7 +39,7 @@ async def create_enterprise_agent(
         from llm_guard.output_scanners import Bias, NoRefusal, Sensitive
         from pydantic_ai import Agent
 
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
 
         # Native guardrails
         from pydantic_ai_guardrails.guardrails.input import (
@@ -128,7 +128,7 @@ async def create_enterprise_agent(
     ]
 
     # Combine all layers
-    return with_guardrails(
+    return GuardedAgent(
         base_agent,
         input_guardrails=native_input + llm_guard_input,
         output_guardrails=native_output + llm_guard_output + autoevals_output,

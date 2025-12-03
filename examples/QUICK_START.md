@@ -24,7 +24,7 @@ pip install pydantic-ai-guardrails llm-guard autoevals
 import asyncio
 from llm_guard.input_scanners import PromptInjection
 from pydantic_ai import Agent
-from pydantic_ai_guardrails import InputGuardrail, GuardrailResult, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, InputGuardrail, GuardrailResult
 
 
 def llm_guard_wrapper(scanner) -> InputGuardrail:
@@ -50,7 +50,7 @@ async def main():
     agent = Agent('openai:gpt-4')
 
     # Add llm-guard protection
-    guarded = with_guardrails(
+    guarded = GuardedAgent(
         agent,
         input_guardrails=[llm_guard_wrapper(PromptInjection())]
     )
@@ -67,7 +67,7 @@ asyncio.run(main())
 import asyncio
 from autoevals.llm import Factuality
 from pydantic_ai import Agent
-from pydantic_ai_guardrails import OutputGuardrail, GuardrailResult, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrail, GuardrailResult
 
 
 def autoevals_wrapper(evaluator, threshold=0.7) -> OutputGuardrail:
@@ -93,7 +93,7 @@ async def main():
     agent = Agent('openai:gpt-4')
 
     # Add factuality checking
-    guarded = with_guardrails(
+    guarded = GuardedAgent(
         agent,
         output_guardrails=[autoevals_wrapper(Factuality())]
     )
@@ -109,7 +109,7 @@ asyncio.run(main())
 ```python
 import asyncio
 from pydantic_ai import Agent
-from pydantic_ai_guardrails import with_guardrails
+from pydantic_ai_guardrails import GuardedAgent
 
 # Native guardrails
 from pydantic_ai_guardrails.guardrails.input import length_limit, blocked_keywords
@@ -127,7 +127,7 @@ async def main():
     agent = Agent('openai:gpt-4')
 
     # Compose all layers
-    guarded = with_guardrails(
+    guarded = GuardedAgent(
         agent,
         input_guardrails=[
             # Layer 1: Native (fast)
@@ -206,7 +206,7 @@ async def _validate(prompt: str) -> GuardrailResult:
 Mix and match freely:
 
 ```python
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[
         native_guardrail(),      # Your library

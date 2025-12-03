@@ -276,7 +276,7 @@ class MockAgent:
 
     Note:
         MockAgent is not a Pydantic AI Agent and cannot be used with
-        with_guardrails(). It's meant for testing guardrail functions
+        GuardedAgent(). It's meant for testing guardrail functions
         directly with testing utilities.
 
     Example:

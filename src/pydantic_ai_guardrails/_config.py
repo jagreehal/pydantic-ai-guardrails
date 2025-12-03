@@ -429,8 +429,8 @@ def load_guardrails_from_config(
         input_guardrails, output_guardrails, settings = load_guardrails_from_config(config)
 
         # Use with agent
-        from pydantic_ai_guardrails import with_guardrails
-        guarded_agent = with_guardrails(
+        from pydantic_ai_guardrails import GuardedAgent
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=input_guardrails,
             output_guardrails=output_guardrails,
@@ -467,9 +467,8 @@ def load_guardrails_from_config(
         guardrail_config = {k: v for k, v in guardrail_config.items() if v is not None}
 
         # Create guardrail
-        # Type ignore: factory is from registry dict, mypy can't infer callable type from dict.get()
         try:
-            guardrail = factory(**guardrail_config)  # type: ignore[operator]
+            guardrail = factory(**guardrail_config)
             input_guardrails.append(guardrail)
         except TypeError as e:
             raise ValueError(
@@ -485,9 +484,9 @@ def load_guardrails_from_config(
             raise ValueError("Guardrail configuration missing 'name' field")
 
         # Get factory function - check if it exists first
-        factory = OUTPUT_GUARDRAIL_REGISTRY.get(guardrail_name)
+        output_factory = OUTPUT_GUARDRAIL_REGISTRY.get(guardrail_name)
 
-        if factory is None:
+        if output_factory is None:
             # Guardrail not implemented yet or unknown
             if guardrail_name in OUTPUT_GUARDRAIL_REGISTRY:
                 print(f"Warning: Guardrail '{guardrail_name}' is not implemented yet, skipping")
@@ -503,10 +502,9 @@ def load_guardrails_from_config(
         guardrail_config = {k: v for k, v in guardrail_config.items() if v is not None}
 
         # Create guardrail
-        # Type ignore: factory is from registry dict, mypy can't infer callable type from dict.get()
         try:
-            guardrail = factory(**guardrail_config)  # type: ignore[operator]
-            output_guardrails.append(guardrail)
+            output_guardrail = output_factory(**guardrail_config)
+            output_guardrails.append(output_guardrail)
         except TypeError as e:
             raise ValueError(
                 f"Invalid configuration for guardrail '{guardrail_name}': {e}\n"
@@ -540,14 +538,14 @@ def create_guarded_agent_from_config(
     """Create guarded agent from configuration file.
 
     This is a convenience function that combines load_config,
-    load_guardrails_from_config, and with_guardrails.
+    load_guardrails_from_config, and GuardedAgent.
 
     Args:
         agent: The Pydantic AI agent to wrap.
         config_path: Path to configuration file (.json or .yaml/.yml).
 
     Returns:
-        Guarded agent with configured guardrails.
+        GuardedAgent with configured guardrails.
 
     Example:
         ```python
@@ -564,7 +562,7 @@ def create_guarded_agent_from_config(
         result = await guarded_agent.run("Your prompt")
         ```
     """
-    from ._integration import with_guardrails
+    from ._guarded_agent import GuardedAgent
 
     # Load configuration
     config = load_config(config_path)
@@ -579,7 +577,7 @@ def create_guarded_agent_from_config(
         configure_telemetry(enabled=config.settings["telemetry"])
 
     # Create guarded agent
-    return with_guardrails(
+    return GuardedAgent(
         agent,
         input_guardrails=input_guardrails,
         output_guardrails=output_guardrails,

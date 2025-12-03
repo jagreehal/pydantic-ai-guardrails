@@ -15,12 +15,12 @@ from examples._utils import get_model_name
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import (
+    GuardedAgent,
     GuardrailResult,
     InputGuardrail,
     InputGuardrailViolation,
     OutputGuardrail,
     OutputGuardrailViolation,
-    with_guardrails,
 )
 
 
@@ -74,7 +74,7 @@ async def main() -> None:
     agent = Agent(get_model_name())  # Automatically detects Ollama vs OpenAI
 
     # Add guardrails
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             InputGuardrail(check_length, name="length_validator"),
@@ -106,7 +106,7 @@ async def main() -> None:
 
     # Example 3: With logging instead of raising
     print("\n3. Using log mode instead of raise:")
-    logging_agent = with_guardrails(
+    logging_agent = GuardedAgent(
         agent,
         input_guardrails=[InputGuardrail(check_length)],
         on_block="log",  # Log instead of raising

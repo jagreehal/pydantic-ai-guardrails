@@ -31,11 +31,11 @@ def min_length(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import min_length
 
         agent = Agent('openai:gpt-4o')
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 min_length(min_chars=50, min_words=10)

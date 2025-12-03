@@ -96,12 +96,12 @@ def rate_limiter(
     Example:
         ```python
         from pydantic_ai import Agent, RunContext
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.input import rate_limiter
 
         # Rate limit by user ID from dependencies
         agent = Agent('openai:gpt-4o', deps_type=dict)
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 rate_limiter(

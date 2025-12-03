@@ -23,9 +23,9 @@ from examples._utils import get_model_name
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import (
+    GuardedAgent,
     configure_telemetry,
     execute_input_guardrails_parallel,
-    with_guardrails,
 )
 from pydantic_ai_guardrails.guardrails.input import (
     length_limit,
@@ -62,7 +62,7 @@ async def example_telemetry():
 
     # Create agent with multiple guardrails
     agent = Agent(model)
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=500, name="input_length"),
@@ -115,7 +115,7 @@ async def example_parallel():
 
     # Sequential execution (default)
     print("\n⏱️  Testing SEQUENTIAL execution...")
-    sequential_agent = with_guardrails(
+    sequential_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=500),
@@ -137,7 +137,7 @@ async def example_parallel():
 
     # Parallel execution
     print("\n⚡ Testing PARALLEL execution...")
-    parallel_agent = with_guardrails(
+    parallel_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=500),
@@ -259,7 +259,7 @@ async def example_production():
 
     # Create production-ready agent
     agent = Agent(model)
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=500, name="input_length"),

@@ -76,11 +76,11 @@ def prompt_injection(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.input import prompt_injection
 
         agent = Agent('openai:gpt-4o')
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 prompt_injection(sensitivity='medium')

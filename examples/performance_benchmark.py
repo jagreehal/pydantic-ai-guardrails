@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import with_guardrails
+from pydantic_ai_guardrails import GuardedAgent
 from pydantic_ai_guardrails.guardrails.input import (
     length_limit,
     pii_detector,
@@ -67,7 +67,7 @@ async def benchmark_sequential(agent: Agent, config: BenchmarkConfig) -> dict:
     print("=" * 80)
 
     # Create agent with sequential execution
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=1000, name="length"),
@@ -146,7 +146,7 @@ async def benchmark_parallel(agent: Agent, config: BenchmarkConfig) -> dict:
     print("=" * 80)
 
     # Create agent with parallel execution
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=1000, name="length"),
@@ -335,7 +335,7 @@ async def main():
         "   5. Tune guardrail sensitivity based on latency requirements\n"
         "\n"
         "   Example production configuration:\n"
-        "   guarded_agent = with_guardrails(\n"
+        "   guarded_agent = GuardedAgent(\n"
         "       agent,\n"
         "       input_guardrails=[...],  # 4+ guardrails\n"
         "       parallel=True,           # Enable parallel execution\n"

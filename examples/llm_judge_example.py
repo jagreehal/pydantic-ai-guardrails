@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name, setup_api_config
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.output import llm_judge
 
 # Configure logging
@@ -54,7 +54,7 @@ async def example_single_criterion():
     # Use llama3.2 for judging (faster/cheaper)
     judge_model = get_model_name(default_ollama="llama3.2:latest")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             llm_judge(
@@ -88,7 +88,7 @@ async def example_multiple_criteria():
 
     judge_model = get_model_name(default_ollama="llama3.2:latest")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             llm_judge(
@@ -129,7 +129,7 @@ async def example_binary_mode():
     print("=" * 70)
     print("Faster evaluation with simple pass/fail decision.\n")
 
-    with_guardrails(
+    GuardedAgent(
         agent,
         output_guardrails=[
             llm_judge(
@@ -153,7 +153,7 @@ async def example_quality_assurance():
     print("=" * 70)
     print("Ensure responses meet quality standards before reaching users.\n")
 
-    with_guardrails(
+    GuardedAgent(
         agent,
         output_guardrails=[
             llm_judge(
@@ -188,7 +188,7 @@ async def example_compliance_checking():
     print("=" * 70)
     print("Ensure responses meet legal/regulatory requirements.\n")
 
-    with_guardrails(
+    GuardedAgent(
         agent,
         output_guardrails=[
             llm_judge(
@@ -219,7 +219,7 @@ async def example_brand_voice():
     print("=" * 70)
     print("Ensure responses match company brand voice and style.\n")
 
-    with_guardrails(
+    GuardedAgent(
         agent,
         output_guardrails=[
             llm_judge(
@@ -259,7 +259,7 @@ async def example_fact_checking():
         system_prompt="You are a customer support assistant. Use the user data to answer questions.",
     )
 
-    with_guardrails(
+    GuardedAgent(
         user_agent,
         output_guardrails=[
             llm_judge(
@@ -286,7 +286,7 @@ async def example_custom_evaluation():
     print("=" * 70)
     print("Create domain-specific evaluation criteria.\n")
 
-    with_guardrails(
+    GuardedAgent(
         agent,
         output_guardrails=[
             llm_judge(

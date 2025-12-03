@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name
 from pydantic_ai import Agent, RunContext
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.output import require_tool_use
 
 # Configure logging to see what's happening
@@ -71,7 +71,7 @@ async def example_require_any_tool():
     print("=" * 70)
     print("Ensures the agent uses at least one tool instead of responding directly.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[require_tool_use()],  # No specific tool required
         max_retries=2,
@@ -95,7 +95,7 @@ async def example_require_specific_tool():
     print("=" * 70)
     print("Ensures the agent uses the search_web tool specifically.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             require_tool_use(tool_names="search_web")  # Specific tool required
@@ -122,7 +122,7 @@ async def example_require_any_of_multiple():
     print("=" * 70)
     print("Agent must use either search_web OR get_weather (not both).\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             require_tool_use(
@@ -151,7 +151,7 @@ async def example_require_all_tools():
     print("=" * 70)
     print("Agent must use BOTH search_web AND get_weather.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             require_tool_use(
@@ -187,7 +187,7 @@ async def example_retry_on_no_tool():
     print("=" * 70)
     print("Agent initially tries to answer directly, then retries with tool.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[require_tool_use(tool_names="calculate")],
         max_retries=3,  # Allow retries
@@ -212,7 +212,7 @@ async def example_log_mode():
     print("=" * 70)
     print("Log when tools aren't used but don't block execution.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[require_tool_use(tool_names="search_web")],
         max_retries=0,  # No retries in log mode

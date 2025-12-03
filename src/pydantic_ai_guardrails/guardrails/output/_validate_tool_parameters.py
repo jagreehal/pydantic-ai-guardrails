@@ -40,7 +40,7 @@ def validate_tool_parameters(
         ```python
         from pydantic import BaseModel, Field
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import validate_tool_parameters
 
         # Define parameter schemas
@@ -61,7 +61,7 @@ def validate_tool_parameters(
             return None
 
         agent = Agent('openai:gpt-4o', tools=[get_weather, read_file])
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 validate_tool_parameters(
@@ -80,7 +80,7 @@ def validate_tool_parameters(
 
     Note:
         This guardrail requires access to message history to inspect tool calls.
-        It works automatically with the with_guardrails() integration.
+        It works automatically with the GuardedAgent integration.
 
     Security Best Practices:
         - Define schemas for all security-sensitive tools
@@ -101,7 +101,7 @@ def validate_tool_parameters(
                 "message": "Cannot validate tool parameters: message history not available in context",
                 "severity": "high",
                 "metadata": {"error": "no_messages_in_context"},
-                "suggestion": "Ensure the guardrail is used with with_guardrails() which provides message context",
+                "suggestion": "Ensure the guardrail is used with GuardedAgent which provides message context",
             }
 
         # Extract all tool calls from message history

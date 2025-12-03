@@ -8,10 +8,10 @@ Example:
     ```python
     from pydantic_ai import Agent
     from pydantic_ai_guardrails import (
+        GuardedAgent,
         InputGuardrail,
         OutputGuardrail,
         GuardrailResult,
-        with_guardrails,
     )
 
     # Define custom guardrail
@@ -26,7 +26,7 @@ Example:
 
     # Use with agent
     agent = Agent('openai:gpt-4o')
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[InputGuardrail(check_length)],
     )
@@ -43,6 +43,7 @@ from ._config import (
     load_guardrails_from_config,
 )
 from ._context import GuardrailContext, create_context
+from ._guarded_agent import GuardedAgent
 from ._guardrails import (
     AgentDepsT,
     InputGuardrail,
@@ -52,7 +53,6 @@ from ._guardrails import (
     OutputGuardrail,
     OutputGuardrailFunc,
 )
-from ._integration import with_guardrails
 from ._parallel import (
     execute_input_guardrails_parallel,
     execute_output_guardrails_parallel,
@@ -96,7 +96,7 @@ __all__ = (
     "InputGuardrailViolation",
     "OutputGuardrailViolation",
     # Integration
-    "with_guardrails",
+    "GuardedAgent",
     # Parallel execution
     "execute_input_guardrails_parallel",
     "execute_output_guardrails_parallel",

@@ -87,7 +87,7 @@ async def demo_output_scanners():
         from llm_guard.output_scanners import Bias, MaliciousURLs, NoRefusal, Sensitive
         from pydantic_ai import Agent
 
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
     except ImportError as e:
         print(f"❌ Missing dependency: {e}")
         print("\nInstall with: pip install pydantic-ai pydantic-ai-guardrails llm-guard")
@@ -99,7 +99,7 @@ async def demo_output_scanners():
     )
 
     # Wrap with output scanners
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             llm_guard_output_scanner(

@@ -33,7 +33,7 @@ def tool_allowlist(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import tool_allowlist
 
         # Define agent with multiple tools
@@ -43,7 +43,7 @@ def tool_allowlist(
         )
 
         # Only allow safe, read-only tools
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 tool_allowlist(
@@ -82,7 +82,7 @@ def tool_allowlist(
 
     Note:
         This guardrail requires access to message history to inspect tool calls.
-        It works automatically with the with_guardrails() integration.
+        It works automatically with the GuardedAgent integration.
 
     Security Best Practices:
         - Always use the minimum set of tools required for the task
@@ -105,7 +105,7 @@ def tool_allowlist(
                 "message": "Cannot verify tool allowlist: message history not available in context",
                 "severity": "high",
                 "metadata": {"error": "no_messages_in_context"},
-                "suggestion": "Ensure the guardrail is used with with_guardrails() which provides message context",
+                "suggestion": "Ensure the guardrail is used with GuardedAgent which provides message context",
             }
 
         # Extract all tool calls from message history

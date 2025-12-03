@@ -22,9 +22,9 @@ os.environ["LOGFIRE_IGNORE_NO_CONFIG"] = "1"
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import (
+    GuardedAgent,
     InputGuardrailViolation,
     OutputGuardrailViolation,
-    with_guardrails,
 )
 from pydantic_ai_guardrails.guardrails.input import (
     length_limit,
@@ -58,7 +58,7 @@ async def example_1_security_focused() -> None:
 
     # Create agent with security guardrails
     agent = Agent(get_model_name(), deps_type=AppDeps)
-    secure_agent = with_guardrails(
+    secure_agent = GuardedAgent(
         agent,
         input_guardrails=[
             prompt_injection(sensitivity="high"),
@@ -118,7 +118,7 @@ async def example_2_quality_focused() -> None:
     print("=" * 70)
 
     agent = Agent(get_model_name())
-    quality_agent = with_guardrails(
+    quality_agent = GuardedAgent(
         agent,
         output_guardrails=[
             min_length(min_chars=30, min_words=5),
@@ -155,7 +155,7 @@ async def example_3_structured_output() -> None:
     print("=" * 70)
 
     agent = Agent(get_model_name())
-    json_agent = with_guardrails(
+    json_agent = GuardedAgent(
         agent,
         output_guardrails=[
             json_validator(
@@ -192,7 +192,7 @@ async def example_4_rate_limiting() -> None:
     store = RateLimitStore()
 
     agent = Agent(get_model_name(), deps_type=AppDeps)
-    rate_limited_agent = with_guardrails(
+    rate_limited_agent = GuardedAgent(
         agent,
         input_guardrails=[
             rate_limiter(
@@ -226,7 +226,7 @@ async def example_5_combined_protection() -> None:
     agent = Agent(get_model_name(), deps_type=AppDeps)
 
     # Comprehensive production setup
-    production_agent = with_guardrails(
+    production_agent = GuardedAgent(
         agent,
         input_guardrails=[
             # Security

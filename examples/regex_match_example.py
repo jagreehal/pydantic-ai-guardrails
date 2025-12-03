@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name, setup_api_config
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.output import regex_match
 
 # Configure logging
@@ -51,7 +51,7 @@ async def example_live_agent():
     print("Agent generates output that must contain an email address.\n")
 
     # Require output to contain an email address
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             regex_match(
