@@ -30,13 +30,13 @@ Here's a minimal example using Pydantic AI Guardrails:
 
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_guardrails import with_guardrails
+from pydantic_ai_guardrails import GuardedAgent
 from pydantic_ai_guardrails.guardrails.input import pii_detector, prompt_injection
 from pydantic_ai_guardrails.guardrails.output import secret_redaction
 
 # Create an agent with guardrails
 agent = Agent('openai:gpt-4o')
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[pii_detector(), prompt_injection()],
     output_guardrails=[secret_redaction()],
@@ -68,7 +68,7 @@ from pydantic_ai_guardrails.guardrails.output import (
     json_validator,
 )
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[
         length_limit(max_chars=1000),
@@ -94,7 +94,7 @@ from examples.llm_guard.llm_guard_basic import (
     llm_guard_output_scanner,
 )
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[
         llm_guard_input_scanner(
@@ -124,7 +124,7 @@ from examples.autoevals.autoevals_factuality import factuality_guardrail
 from examples.autoevals.autoevals_moderation import autoevals_evaluator_guardrail
 from autoevals.llm import Moderation
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[
         factuality_guardrail(threshold=0.7),
@@ -157,7 +157,7 @@ guard = evaluator_guardrail(
 # Or use convenience functions
 guard = output_contains("thank you", case_sensitive=False)
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[guard],
 )
@@ -189,7 +189,7 @@ async def check_brand_mentions(prompt: str) -> GuardrailResult:
 
 custom_guardrail = InputGuardrail(check_brand_mentions)
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[custom_guardrail],
 )
@@ -218,7 +218,7 @@ autoevals_output = [
 ]
 
 # Combine all layers
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=native_input + llm_guard_input,
     output_guardrails=autoevals_output,
@@ -242,7 +242,7 @@ result = await agent.run('My SSN is 123-45-6789, help me...')
 # → Sends sensitive data to LLM → Compliance risk
 
 # ✅ With guardrails - PII blocked before API call
-guarded_agent = with_guardrails(agent, input_guardrails=[pii_detector()])
+guarded_agent = GuardedAgent(agent, input_guardrails=[pii_detector()])
 result = await guarded_agent.run('My SSN is 123-45-6789, help me...')
 # → InputGuardrailViolation raised → No API call, no cost, no risk
 ```
@@ -263,7 +263,7 @@ def validate_output(ctx: RunContext, output: str) -> str:
     return output
 
 # ✅ With guardrails - reusable, tested, production-ready
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[secret_redaction(), pii_detector(), toxicity_filter()],
 )
@@ -277,7 +277,7 @@ Guardrails automatically retry with detailed feedback to help the LLM self-corre
 # "Output contains API key at position 45. Replace with [REDACTED] or remove."
 # The LLM retries with this context and usually fixes it.
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[secret_redaction()],
     max_retries=2,  # Auto-retry on violations
@@ -288,7 +288,7 @@ guarded_agent = with_guardrails(
 Run multiple guardrails concurrently without sequential slowdown:
 
 ```python
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[pii_detector(), prompt_injection(), toxicity_detector()],
     parallel=True,  # All checks run concurrently
@@ -337,7 +337,7 @@ The `llm_judge()` guardrail uses a separate LLM to evaluate output quality again
 ```python
 from pydantic_ai_guardrails.guardrails.output import llm_judge
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[
         llm_judge(
@@ -367,7 +367,7 @@ The `secret_redaction()` guardrail detects and redacts API keys, tokens, and oth
 ```python
 from pydantic_ai_guardrails.guardrails.output import secret_redaction
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[secret_redaction()],
     max_retries=2,
@@ -395,7 +395,7 @@ The `regex_match()` guardrail ensures outputs contain required patterns:
 ```python
 from pydantic_ai_guardrails.guardrails.output import regex_match
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[
         regex_match(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
@@ -437,7 +437,7 @@ flowchart TD
 ```
 
 ```python
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[
         pii_detector(),
@@ -510,7 +510,7 @@ async def check_user(ctx: GuardrailContext[SecurityDeps], prompt: str) -> Guardr
     return {'tripwire_triggered': False}
 
 agent = Agent('openai:gpt-4o', deps_type=SecurityDeps)
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[InputGuardrail(check_user)],
 )
@@ -677,7 +677,7 @@ logfire.configure()
 configure_telemetry(enabled=True)
 
 # All guardrail validations now create spans in Logfire
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[pii_detector(), prompt_injection()],
 )
@@ -714,7 +714,7 @@ async def check_business_hours(prompt: str) -> GuardrailResult:
         }
     return {'tripwire_triggered': False}
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[InputGuardrail(check_business_hours)],
 )
@@ -741,7 +741,7 @@ async def check_response_completeness(output: str) -> GuardrailResult:
         }
     return {'tripwire_triggered': False}
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[OutputGuardrail(check_response_completeness)],
 )
@@ -778,7 +778,7 @@ async def check_token_limit(ctx: GuardrailContext[AppDeps], prompt: str) -> Guar
     return {'tripwire_triggered': False}
 
 agent = Agent('openai:gpt-4', deps_type=AppDeps)
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[InputGuardrail(check_token_limit)],
 )
@@ -806,7 +806,7 @@ except OutputGuardrailViolation as e:
 
 Control blocking behavior:
 ```python
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[pii_detector()],
     on_block='log',  # 'raise' (default), 'log', or 'silent'
@@ -819,7 +819,7 @@ When output guardrails detect violations, the agent can automatically retry with
 
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_guardrails import with_guardrails, OutputGuardrail
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrail
 
 async def check_pii(output: str) -> GuardrailResult:
     if '@' in output or re.search(r'\d{3}-\d{2}-\d{4}', output):
@@ -832,7 +832,7 @@ async def check_pii(output: str) -> GuardrailResult:
     return {'tripwire_triggered': False}
 
 agent = Agent('openai:gpt-4o')
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     output_guardrails=[OutputGuardrail(check_pii)],
     max_retries=3,  # Retry up to 3 times on violations
@@ -898,7 +898,7 @@ See `examples/retry_auto_fix.py` for complete examples.
 Run guardrails concurrently for better performance:
 
 ```python
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[pii_detector(), prompt_injection(), toxicity_detector()],
     parallel=True,  # Run all guardrails concurrently
@@ -979,11 +979,11 @@ async def test_my_guardrail():
 | `GuardrailContext[DepsT]` | Context passed to guardrail functions with deps, messages, prompt |
 | `GuardrailResult` | TypedDict returned by guardrail functions |
 
-### Core Functions
+### Core Classes and Functions
 
-| Function | Purpose |
-|----------|---------|
-| `with_guardrails()` | Wrap agent with input/output guardrails |
+| Type | Purpose |
+|------|---------|
+| `GuardedAgent` | Wrap agent with input/output guardrails |
 | `create_context()` | Create a GuardrailContext for testing |
 | `configure_telemetry()` | Enable global telemetry |
 | `create_guarded_agent_from_config()` | Load guardrails from OpenAI config |
@@ -1008,7 +1008,7 @@ async def test_my_guardrail():
 See implementation details in:
 - [`src/pydantic_ai_guardrails/_context.py`](./src/pydantic_ai_guardrails/_context.py) - GuardrailContext definition
 - [`src/pydantic_ai_guardrails/_guardrails.py`](./src/pydantic_ai_guardrails/_guardrails.py) - InputGuardrail/OutputGuardrail classes
-- [`src/pydantic_ai_guardrails/_integration.py`](./src/pydantic_ai_guardrails/_integration.py) - with_guardrails() wrapper
+- [`src/pydantic_ai_guardrails/_guarded_agent.py`](./src/pydantic_ai_guardrails/_guarded_agent.py) - GuardedAgent class
 - [`src/pydantic_ai_guardrails/guardrails/input/`](./src/pydantic_ai_guardrails/guardrails/input/) - Built-in input guardrails
 - [`src/pydantic_ai_guardrails/guardrails/output/`](./src/pydantic_ai_guardrails/guardrails/output/) - Built-in output guardrails
 

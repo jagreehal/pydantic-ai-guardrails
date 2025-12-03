@@ -43,11 +43,11 @@ def pii_detector(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.input import pii_detector
 
         agent = Agent('openai:gpt-4o')
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 pii_detector(detect_types=['email', 'phone', 'ssn'])

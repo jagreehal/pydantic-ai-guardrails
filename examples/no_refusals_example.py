@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name, setup_api_config
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.output import no_refusals
 
 # Configure logging
@@ -49,7 +49,7 @@ async def example_live_agent():
     print("=" * 70)
     print("Agent responses are checked for refusal patterns.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[no_refusals()],
         on_block="raise",
@@ -190,7 +190,7 @@ async def example_auto_retry():
     print("Automatically retry when model refuses, with feedback.\n")
 
     print("Setup:")
-    print("  guarded_agent = with_guardrails(")
+    print("  guarded_agent = GuardedAgent(")
     print("      agent,")
     print("      output_guardrails=[no_refusals()],")
     print("      max_retries=2,")
@@ -327,7 +327,7 @@ async def example_production_monitoring():
     print("   configure_telemetry(enabled=True)\n")
 
     print("2. Use auto-retry to reduce refusal impact:")
-    print("   guarded_agent = with_guardrails(")
+    print("   guarded_agent = GuardedAgent(")
     print("       agent,")
     print("       output_guardrails=[no_refusals()],")
     print("       max_retries=2,")

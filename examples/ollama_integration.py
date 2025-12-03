@@ -15,9 +15,9 @@ from examples._utils import get_model_name
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import (
+    GuardedAgent,
     InputGuardrailViolation,
     OutputGuardrailViolation,
-    with_guardrails,
 )
 from pydantic_ai_guardrails.guardrails.input import length_limit, pii_detector
 from pydantic_ai_guardrails.guardrails.output import min_length, secret_redaction
@@ -33,7 +33,7 @@ async def test_input_guardrails() -> None:
     agent = Agent(get_model_name())  # Automatically detects Ollama vs OpenAI
 
     # Add input guardrails
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=500),
@@ -81,7 +81,7 @@ async def test_output_guardrails() -> None:
     agent = Agent(get_model_name())  # Automatically detects Ollama vs OpenAI
 
     # Add output guardrails
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             min_length(min_chars=20, min_words=3),
@@ -135,7 +135,7 @@ async def test_combined_guardrails() -> None:
     agent = Agent(get_model_name())  # Automatically detects Ollama vs OpenAI
 
     # Add both input and output guardrails
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=200),

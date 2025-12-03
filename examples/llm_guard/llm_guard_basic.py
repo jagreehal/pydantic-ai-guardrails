@@ -71,7 +71,7 @@ async def demo_input_scanners():
         from llm_guard.input_scanners import PromptInjection, Secrets, Toxicity
         from pydantic_ai import Agent
 
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
     except ImportError as e:
         print(f"❌ Missing dependency: {e}")
         print("\nInstall with: pip install pydantic-ai pydantic-ai-guardrails llm-guard")
@@ -84,7 +84,7 @@ async def demo_input_scanners():
     )
 
     # Wrap with llm-guard scanners
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             llm_guard_input_scanner(

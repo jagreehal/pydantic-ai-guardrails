@@ -34,11 +34,11 @@ def length_limit(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.input import length_limit
 
         agent = Agent('openai:gpt-4o')
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 length_limit(max_chars=1000, max_tokens=256)

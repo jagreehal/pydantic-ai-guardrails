@@ -15,10 +15,10 @@ from pathlib import Path
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import (
+    GuardedAgent,
     create_guarded_agent_from_config,
     load_config,
     load_guardrails_from_config,
-    with_guardrails,
 )
 from pydantic_ai_guardrails.exceptions import InputGuardrailViolation
 
@@ -53,7 +53,7 @@ async def example_simple_config():
     print(f"✓ Loaded {len(input_guardrails)} input, {len(output_guardrails)} output guardrails")
 
     # Create guarded agent
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=input_guardrails,
         output_guardrails=output_guardrails,
@@ -238,7 +238,7 @@ async def example_dynamic_config():
     input_guardrails, output_guardrails, settings = load_guardrails_from_config(config)
 
     # Create guarded agent
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         Agent("test"),
         input_guardrails=input_guardrails,
         output_guardrails=output_guardrails,

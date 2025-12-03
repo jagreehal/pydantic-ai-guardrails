@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name, setup_api_config
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, create_context, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrailViolation, create_context
 
 # Configure logging
 logging.basicConfig(
@@ -51,7 +51,7 @@ async def example_output_contains():
     try:
         from pydantic_ai_guardrails.evals import output_contains
 
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 output_contains("thank you", case_sensitive=False),
@@ -92,7 +92,7 @@ async def example_evaluator_guardrail():
             name="contains_python",
         )
 
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[guard],
             on_block="raise",
@@ -128,7 +128,7 @@ async def example_output_equals():
             system_prompt="Respond ONLY with the word 'CONFIRMED'. Nothing else.",
         )
 
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             echo_agent,
             output_guardrails=[
                 output_equals("CONFIRMED"),
@@ -231,7 +231,7 @@ async def example_combining_with_other_guardrails():
     print("from pydantic_ai_guardrails.guardrails.output import secret_redaction")
     print("from pydantic_ai_guardrails.evals import output_contains")
     print("")
-    print("guarded_agent = with_guardrails(")
+    print("guarded_agent = GuardedAgent(")
     print("    agent,")
     print("    output_guardrails=[")
     print("        secret_redaction(),      # Fast: pattern check")

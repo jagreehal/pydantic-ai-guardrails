@@ -57,20 +57,20 @@ def no_refusals(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import no_refusals
 
         agent = Agent('openai:gpt-4o')
 
         # Block any refusals
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[no_refusals()],
             max_retries=2,  # Retry with feedback
         )
 
         # Allow partial refusals (e.g., "I cannot verify that, but here's what I know...")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 no_refusals(allow_partial_refusals=True)
@@ -78,7 +78,7 @@ def no_refusals(
         )
 
         # Custom patterns only
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 no_refusals(
@@ -98,7 +98,7 @@ def no_refusals(
     Example with retry:
         ```python
         # Automatically retry refusals with feedback
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[no_refusals()],
             max_retries=2,

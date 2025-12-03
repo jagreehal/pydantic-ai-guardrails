@@ -95,7 +95,7 @@ async def main():
     try:
         from pydantic_ai import Agent
 
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
     except ImportError as e:
         print(f"❌ Missing dependency: {e}")
         print("\nInstall with: pip install pydantic-ai pydantic-ai-guardrails autoevals")
@@ -107,7 +107,7 @@ async def main():
 
     agent = Agent('openai:gpt-4', system_prompt="Answer questions accurately.")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             factuality_guardrail(threshold=0.7)

@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name
 from pydantic_ai import Agent, RunContext
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.output import (
     require_tool_use,
     tool_allowlist,
@@ -104,7 +104,7 @@ async def example_basic_allowlist():
     print("=" * 70)
     print("Only allow search_web tool.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[tool_allowlist(allowed_tools="search_web")],
         max_retries=0,
@@ -127,7 +127,7 @@ async def example_multiple_allowed_tools():
     print("=" * 70)
     print("Allow search_web AND get_weather (read-only tools).\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             tool_allowlist(allowed_tools=["search_web", "get_weather"])
@@ -153,7 +153,7 @@ async def example_block_dangerous_tools():
     print("=" * 70)
     print("Attempt to use execute_code (not in allowlist).\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             tool_allowlist(allowed_tools=["search_web", "get_weather"])
@@ -188,7 +188,7 @@ async def example_role_based_access_admin():
         "delete_data",
     ]
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[tool_allowlist(allowed_tools=admin_allowlist)],
         max_retries=0,
@@ -212,7 +212,7 @@ async def example_role_based_access_user():
 
     user_allowlist = ["search_web", "get_weather", "read_file"]
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[tool_allowlist(allowed_tools=user_allowlist)],
         max_retries=0,
@@ -237,7 +237,7 @@ async def example_role_based_access_guest():
 
     guest_allowlist = ["search_web"]
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[tool_allowlist(allowed_tools=guest_allowlist)],
         max_retries=0,
@@ -263,7 +263,7 @@ async def example_security_sandbox():
     # In dev/test, only allow safe, non-destructive tools
     safe_tools = ["search_web", "get_weather", "read_file"]
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[tool_allowlist(allowed_tools=safe_tools)],
         max_retries=0,
@@ -286,7 +286,7 @@ async def example_combined_with_require_tool_use():
     print("=" * 70)
     print("Ensure tool IS used AND it's an allowed tool.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             tool_allowlist(allowed_tools=["search_web", "get_weather"]),
@@ -312,7 +312,7 @@ async def example_security_violation_details():
     print("=" * 70)
     print("Examine detailed information when tools are blocked.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             tool_allowlist(allowed_tools=["search_web", "get_weather"])

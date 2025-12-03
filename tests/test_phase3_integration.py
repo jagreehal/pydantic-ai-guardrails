@@ -16,10 +16,10 @@ import pytest
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import (
+    GuardedAgent,
     configure_telemetry,
     execute_input_guardrails_parallel,
     execute_output_guardrails_parallel,
-    with_guardrails,
 )
 from pydantic_ai_guardrails.exceptions import InputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.input import length_limit, pii_detector
@@ -44,7 +44,7 @@ class TestTelemetry:
         configure_telemetry(enabled=True)
 
         agent = Agent("test")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[length_limit(max_chars=100)],
         )
@@ -61,7 +61,7 @@ class TestTelemetry:
         configure_telemetry(enabled=True)
 
         agent = Agent("test")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[length_limit(max_chars=10)],
             on_block="raise",
@@ -173,12 +173,12 @@ class TestParallelExecution:
         assert len(violations) == 1
         assert violations[0][0] == "length_limit"
 
-    async def test_with_guardrails_parallel_parameter(self):
-        """Test with_guardrails() parallel parameter."""
+    async def test_guarded_agent_parallel_parameter(self):
+        """Test GuardedAgent parallel parameter."""
         agent = Agent("test")
 
         # Parallel execution
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 length_limit(max_chars=100),
@@ -195,7 +195,7 @@ class TestParallelExecution:
         agent = Agent("test")
 
         # Sequential
-        sequential_agent = with_guardrails(
+        sequential_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 length_limit(max_chars=100),
@@ -209,7 +209,7 @@ class TestParallelExecution:
         sequential_time = time.perf_counter() - start
 
         # Parallel
-        parallel_agent = with_guardrails(
+        parallel_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 length_limit(max_chars=100),
@@ -241,7 +241,7 @@ class TestCombinedFeatures:
         configure_telemetry(enabled=True)
 
         agent = Agent("test")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 length_limit(max_chars=100),
@@ -267,7 +267,7 @@ class TestCombinedFeatures:
 
         # Create production agent
         agent = Agent("test")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 length_limit(max_chars=1000),
@@ -303,7 +303,7 @@ class TestNoRegressions:
     async def test_sequential_still_works(self):
         """Test that sequential execution (default) still works."""
         agent = Agent("test")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[length_limit(max_chars=100)],
             parallel=False,  # Explicit sequential
@@ -315,7 +315,7 @@ class TestNoRegressions:
     async def test_no_guardrails_works(self):
         """Test agent with no guardrails still works."""
         agent = Agent("test")
-        guarded_agent = with_guardrails(agent)
+        guarded_agent = GuardedAgent(agent)
 
         result = await guarded_agent.run("Test")
         assert result is not None
@@ -328,7 +328,7 @@ class TestNoRegressions:
             return {"tripwire_triggered": False}
 
         agent = Agent("test")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 InputGuardrail(custom_guardrail),
@@ -352,7 +352,7 @@ class TestNoRegressions:
         )
 
         agent = Agent("test")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 length_limit(max_chars=1000),

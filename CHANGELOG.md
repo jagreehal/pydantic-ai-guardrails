@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-12-03
+
+### Fixed
+
+- Updated to pydantic-ai's new API: `result_type` → `output_type`, `result.data` → `result.output`
+- Fixed mypy type errors by replacing redundant `cast()` calls with explicit `Literal` type annotations in toxicity and hallucination guardrails
+- Fixed type conflicts in `_config.py` by using separate variable names for input and output factory functions
+- Removed unused `type: ignore` comments that were no longer needed
+
+### Changed
+
+- Removed unused `cast` import from `_llm_judge.py` after API update
+
 ## [0.2.0] - 2025-11-25
 
 ### Added

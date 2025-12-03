@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 from ..._guardrails import OutputGuardrail
 from ..._results import GuardrailResult
@@ -58,11 +58,11 @@ def toxicity_filter(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import toxicity_filter
 
         agent = Agent('openai:gpt-4o')
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 toxicity_filter(categories=['profanity', 'hate_speech'])
@@ -132,9 +132,7 @@ def toxicity_filter(
                         break
 
         if detected_categories:
-            from typing import Literal, cast
-
-            severity = cast(Literal["low", "medium", "high", "critical"], "critical" if max_score > 0.8 else "high")
+            severity: Literal["low", "medium", "high", "critical"] = "critical" if max_score > 0.8 else "high"
 
             return {
                 "tripwire_triggered": action == "block",

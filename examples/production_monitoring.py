@@ -43,7 +43,7 @@ except ImportError:
 
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import configure_telemetry, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, configure_telemetry
 from pydantic_ai_guardrails.guardrails.input import (
     length_limit,
     pii_detector,
@@ -227,7 +227,7 @@ async def run_production_agent():
     # Create production agent with comprehensive guardrails
     agent = Agent(model, deps_type=UserContext)
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             length_limit(max_chars=1000, name="input_length_limit"),

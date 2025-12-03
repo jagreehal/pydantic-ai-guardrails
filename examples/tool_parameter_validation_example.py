@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name
 from pydantic_ai import Agent, RunContext
 
-from pydantic_ai_guardrails import OutputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, OutputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.output import validate_tool_parameters
 
 # Configure logging
@@ -144,7 +144,7 @@ async def example_schema_validation():
     print("=" * 70)
     print("Validates tool arguments against Pydantic schemas.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             validate_tool_parameters(
@@ -175,7 +175,7 @@ async def example_custom_validators():
     print("=" * 70)
     print("Use custom validators for complex security rules.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             validate_tool_parameters(
@@ -205,7 +205,7 @@ async def example_combined_validation():
     print("=" * 70)
     print("Use both Pydantic schemas AND custom validators together.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             validate_tool_parameters(
@@ -233,7 +233,7 @@ async def example_strict_mode():
     print("=" * 70)
     print("Require validation for ALL tools - block undefined ones.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             validate_tool_parameters(
@@ -265,7 +265,7 @@ async def example_sql_injection_prevention():
     print("=" * 70)
     print("Detect dangerous SQL patterns in parameters.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             validate_tool_parameters(
@@ -293,7 +293,7 @@ async def example_parameter_limits():
     print("=" * 70)
     print("Enforce limits on string length, array size, numeric ranges.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             validate_tool_parameters(

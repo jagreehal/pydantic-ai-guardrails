@@ -21,7 +21,7 @@ class TestLLMJudge:
 
         # Mock the judge agent
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.9,
             reasoning="Response is very helpful and accurate",
             pass_fail=True,
@@ -47,7 +47,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.5,
             reasoning="Response lacks detail",
             pass_fail=True,
@@ -73,7 +73,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.8,  # Above threshold but...
             reasoning="Contains inappropriate language",
             pass_fail=False,  # Judge says fail
@@ -102,7 +102,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.85,
             reasoning="Meets all criteria well",
             pass_fail=True,
@@ -127,7 +127,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=1.0,  # Binary: 1.0 or 0.0
             reasoning="Meets all guidelines",
             pass_fail=True,
@@ -152,7 +152,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.9,
             reasoning="Good quality",
             pass_fail=True,
@@ -196,7 +196,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.8,
             reasoning="Pretty good response",
             pass_fail=True,
@@ -226,7 +226,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.5,
             reasoning="Lacks specific examples and citations",
             pass_fail=False,
@@ -282,7 +282,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.7,  # Exactly at threshold
             reasoning="Meets minimum requirements",
             pass_fail=True,
@@ -307,7 +307,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=1.0,
             reasoning="Perfect response meeting all criteria",
             pass_fail=True,
@@ -332,7 +332,7 @@ class TestLLMJudge:
         )
 
         mock_result = MagicMock()
-        mock_result.data = JudgmentResult(
+        mock_result.output = JudgmentResult(
             score=0.0,
             reasoning="Completely fails all criteria",
             pass_fail=False,

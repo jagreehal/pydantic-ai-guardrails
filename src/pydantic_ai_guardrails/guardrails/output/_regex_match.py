@@ -42,13 +42,13 @@ def regex_match(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import regex_match
 
         agent = Agent('openai:gpt-4o')
 
         # Validate email format
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 regex_match(
@@ -58,7 +58,7 @@ def regex_match(
         )
 
         # Validate product ID format (e.g., "PROD-12345")
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 regex_match(
@@ -69,7 +69,7 @@ def regex_match(
         )
 
         # Require multiple patterns (AND logic)
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 regex_match(

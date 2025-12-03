@@ -148,20 +148,23 @@ guardrail = OutputGuardrail(check_secrets, name='secret_check')
 
 ## Integration
 
-### `with_guardrails()`
+### `GuardedAgent`
 
 Wrap an agent with guardrails for input and output validation.
 
 ```python
-def with_guardrails(
-    agent: Agent[AgentDepsT, OutputDataT],
-    *,
-    input_guardrails: Sequence[InputGuardrail[AgentDepsT, Any]] = (),
-    output_guardrails: Sequence[OutputGuardrail[AgentDepsT, OutputDataT, Any]] = (),
-    on_block: Literal["raise", "log", "silent"] = "raise",
-    parallel: bool = False,
-) -> Agent[AgentDepsT, OutputDataT]:
-    """Wrap agent with guardrails."""
+class GuardedAgent(Generic[AgentDepsT, OutputDataT]):
+    def __init__(
+        self,
+        agent: Agent[AgentDepsT, OutputDataT],
+        *,
+        input_guardrails: Sequence[InputGuardrail[AgentDepsT, Any]] = (),
+        output_guardrails: Sequence[OutputGuardrail[AgentDepsT, OutputDataT, Any]] = (),
+        on_block: Literal["raise", "log", "silent"] = "raise",
+        parallel: bool = False,
+        max_retries: int = 0,
+    ) -> None:
+        """Initialize GuardedAgent with guardrails."""
 ```
 
 **Parameters:**
@@ -173,18 +176,19 @@ def with_guardrails(
   - `'log'`: Log violation but continue
   - `'silent'`: Silently ignore
 - `parallel`: Execute guardrails concurrently (default: False)
+- `max_retries`: Retry attempts on output guardrail failure (default: 0)
 
-**Returns:** Wrapped agent with same type signature
+**Returns:** `GuardedAgent` instance that wraps the original agent
 
 **Example:**
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_guardrails import with_guardrails
+from pydantic_ai_guardrails import GuardedAgent
 from pydantic_ai_guardrails.guardrails.input import length_limit
 from pydantic_ai_guardrails.guardrails.output import min_length
 
 agent = Agent('openai:gpt-4o')
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[length_limit(max_chars=1000)],
     output_guardrails=[min_length(min_chars=20)],
@@ -635,7 +639,7 @@ for name, result in results:
 Start with built-in guardrails for common use cases:
 
 ```python
-from pydantic_ai_guardrails import with_guardrails
+from pydantic_ai_guardrails import GuardedAgent
 from pydantic_ai_guardrails.guardrails.input import (
     length_limit, pii_detector, prompt_injection
 )
@@ -643,7 +647,7 @@ from pydantic_ai_guardrails.guardrails.output import (
     min_length, secret_redaction
 )
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[
         length_limit(max_chars=1000),
@@ -669,7 +673,7 @@ configure_telemetry(enabled=True)
 ### 3. Use Parallel Execution
 
 ```python
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     agent,
     input_guardrails=[...],  # Multiple independent guardrails
     parallel=True,  # Run concurrently

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic_ai import RunContext
 
@@ -61,11 +61,11 @@ def hallucination_detector(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import hallucination_detector
 
         agent = Agent('openai:gpt-4o')
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 hallucination_detector(
@@ -145,9 +145,7 @@ def hallucination_detector(
                 pass
 
         if issues:
-            from typing import Literal, cast
-
-            severity = cast(Literal["low", "medium", "high", "critical"], "high" if require_confidence else "medium")
+            severity: Literal["low", "medium", "high", "critical"] = "high" if require_confidence else "medium"
 
             return {
                 "tripwire_triggered": require_confidence or check_suspicious_data,

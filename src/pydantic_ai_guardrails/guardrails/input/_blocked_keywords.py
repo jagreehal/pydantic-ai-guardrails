@@ -42,13 +42,13 @@ def blocked_keywords(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.input import blocked_keywords
 
         agent = Agent('openai:gpt-4o')
 
         # Block competitor mentions
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 blocked_keywords(
@@ -59,7 +59,7 @@ def blocked_keywords(
         )
 
         # Block sensitive topics
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 blocked_keywords(
@@ -70,7 +70,7 @@ def blocked_keywords(
         )
 
         # Block with regex patterns
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             input_guardrails=[
                 blocked_keywords(

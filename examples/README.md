@@ -157,13 +157,13 @@ def external_scanner_wrapper(scanner, severity="high") -> InputGuardrail:
 Mix and match guardrails from different sources:
 
 ```python
-from pydantic_ai_guardrails import with_guardrails
+from pydantic_ai_guardrails import GuardedAgent
 from pydantic_ai_guardrails.guardrails.input import length_limit
 from llm_guard_basic import llm_guard_input_scanner
 from llm_guard.input_scanners import PromptInjection
 from autoevals_factuality import factuality_guardrail
 
-guarded_agent = with_guardrails(
+guarded_agent = GuardedAgent(
     base_agent,
     input_guardrails=[
         # Native (fast)
@@ -189,10 +189,10 @@ Enable `parallel=True` to run independent guardrails concurrently:
 
 ```python
 # Sequential: ~500ms total (5 × 100ms each)
-agent = with_guardrails(agent, input_guardrails=[g1, g2, g3, g4, g5])
+agent = GuardedAgent(agent, input_guardrails=[g1, g2, g3, g4, g5])
 
 # Parallel: ~100ms total (all run simultaneously)
-agent = with_guardrails(agent, input_guardrails=[g1, g2, g3, g4, g5], parallel=True)
+agent = GuardedAgent(agent, input_guardrails=[g1, g2, g3, g4, g5], parallel=True)
 ```
 
 ### Layer Ordering

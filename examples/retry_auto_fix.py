@@ -24,10 +24,10 @@ from examples._utils import get_model_name
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import (
+    GuardedAgent,
     GuardrailResult,
     OutputGuardrail,
     OutputGuardrailViolation,
-    with_guardrails,
 )
 
 # Configure logging to see retry attempts
@@ -150,7 +150,7 @@ async def example_deterministic_retry():
             print(f"  ✅ Attempt {attempt_count['value']}: Guardrail passed")
             return {'tripwire_triggered': False}
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[OutputGuardrail(check_pii_controlled, name='pii-detector-test')],
         max_retries=2,
@@ -176,7 +176,7 @@ async def example_pii_auto_fix():
     print("="*70)
 
     # Wrap agent with PII guardrail and auto-retry
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[OutputGuardrail(check_pii, name='pii-detector')],
         max_retries=2,  # Allow up to 2 retries
@@ -206,7 +206,7 @@ async def example_quality_auto_fix():
     print("="*70)
 
     # Wrap agent with quality guardrail
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[OutputGuardrail(check_quality_simple, name='quality-checker')],
         max_retries=3,
@@ -234,7 +234,7 @@ async def example_multiple_guardrails():
     print("="*70)
 
     # Wrap agent with both PII and quality guardrails
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[
             OutputGuardrail(check_pii, name='pii-detector'),
@@ -266,7 +266,7 @@ async def example_no_retry_needed():
     print("Example 5: No Retry Needed (Clean First Output)")
     print("="*70)
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         output_guardrails=[OutputGuardrail(check_pii, name='pii-detector')],
         max_retries=2,

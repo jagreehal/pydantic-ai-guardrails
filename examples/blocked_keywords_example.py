@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from examples._utils import get_model_name
 from pydantic_ai import Agent
 
-from pydantic_ai_guardrails import InputGuardrailViolation, with_guardrails
+from pydantic_ai_guardrails import GuardedAgent, InputGuardrailViolation
 from pydantic_ai_guardrails.guardrails.input import blocked_keywords
 
 # Configure logging
@@ -47,7 +47,7 @@ async def example_basic_blocking():
     print("=" * 70)
     print("Block a simple keyword.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[blocked_keywords(keywords="badword")],
         on_block="raise",
@@ -77,7 +77,7 @@ async def example_multiple_keywords():
     print("=" * 70)
     print("Block several keywords at once.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(keywords=["politics", "religion", "cryptocurrency"])
@@ -102,7 +102,7 @@ async def example_case_sensitivity():
 
     # Case-insensitive (default)
     print("Case-insensitive mode:")
-    case_insensitive = with_guardrails(
+    case_insensitive = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(keywords=["Secret"], case_sensitive=False)
@@ -118,7 +118,7 @@ async def example_case_sensitivity():
 
     # Case-sensitive
     print("\nCase-sensitive mode:")
-    case_sensitive = with_guardrails(
+    case_sensitive = GuardedAgent(
         agent,
         input_guardrails=[blocked_keywords(keywords=["Secret"], case_sensitive=True)],
         on_block="raise",
@@ -140,7 +140,7 @@ async def example_whole_words():
 
     # Substring matching (default)
     print("Substring mode (default):")
-    substring = with_guardrails(
+    substring = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(keywords=["test"], whole_words_only=False)
@@ -156,7 +156,7 @@ async def example_whole_words():
 
     # Whole words only
     print("\nWhole words only mode:")
-    whole_words = with_guardrails(
+    whole_words = GuardedAgent(
         agent,
         input_guardrails=[blocked_keywords(keywords=["test"], whole_words_only=True)],
         on_block="raise",
@@ -176,7 +176,7 @@ async def example_regex_patterns():
     print("=" * 70)
     print("Use regex for complex patterns (URLs, emails, etc.).\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(
@@ -214,7 +214,7 @@ async def example_competitor_blocking():
     print("=" * 70)
     print("Prevent mentions of competitors in customer-facing content.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(
@@ -245,7 +245,7 @@ async def example_content_policy():
     print("=" * 70)
     print("Enforce community guidelines and content policies.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(
@@ -280,7 +280,7 @@ async def example_cost_control():
     print("=" * 70)
     print("Block requests for expensive operations.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(
@@ -311,7 +311,7 @@ async def example_security_keywords():
     print("=" * 70)
     print("Block common jailbreak/prompt injection patterns.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(
@@ -345,7 +345,7 @@ async def example_multiple_matches():
     print("=" * 70)
     print("Show details when multiple keywords are matched.\n")
 
-    guarded_agent = with_guardrails(
+    guarded_agent = GuardedAgent(
         agent,
         input_guardrails=[
             blocked_keywords(keywords=["competitor", "politics", "spam"])

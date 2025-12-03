@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -62,13 +62,13 @@ def llm_judge(
     Example:
         ```python
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails import with_guardrails
+        from pydantic_ai_guardrails import GuardedAgent
         from pydantic_ai_guardrails.guardrails.output import llm_judge
 
         agent = Agent('openai:gpt-4o')
 
         # Single criterion evaluation
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 llm_judge(
@@ -80,7 +80,7 @@ def llm_judge(
         )
 
         # Multiple criteria evaluation
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 llm_judge(
@@ -95,7 +95,7 @@ def llm_judge(
         )
 
         # Binary pass/fail (faster)
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 llm_judge(
@@ -106,7 +106,7 @@ def llm_judge(
         )
 
         # With context for fact-checking
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 llm_judge(
@@ -129,7 +129,7 @@ def llm_judge(
     Example with auto-retry:
         ```python
         # Judge provides feedback that helps LLM improve on retry
-        guarded_agent = with_guardrails(
+        guarded_agent = GuardedAgent(
             agent,
             output_guardrails=[
                 llm_judge(
@@ -248,17 +248,15 @@ def llm_judge(
             eval_prompt = "\n".join(eval_prompt_parts)
 
             # Create judge agent
-            # judge_model is str but Agent expects specific model literals
-            # We allow any string to support custom models - cast to satisfy type checker
             judge_agent = Agent(
-                cast(Any, judge_model),
-                result_type=JudgmentResult,
+                judge_model,
+                output_type=JudgmentResult,
                 system_prompt=system_prompt,
             )
 
             # Run judgment
             result = await judge_agent.run(eval_prompt)
-            judgment = result.data
+            judgment = result.output
 
             # Determine if passed
             passed = judgment.pass_fail and judgment.score >= threshold
