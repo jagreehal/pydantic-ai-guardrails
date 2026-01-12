@@ -1,0 +1,169 @@
+---
+title: LLM Judge
+description: LLM-as-a-judge quality evaluation
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `llm_judge` guardrail uses another LLM to evaluate response quality against specified criteria.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.output import llm_judge
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.output import llm_judge
+
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        llm_judge(
+            criteria='Is the response helpful and accurate?',
+            threshold=0.7,
+        ),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `criteria` | `str \| list[str]` | Required | Evaluation criteria |
+| `threshold` | `float` | `0.7` | Minimum passing score (0.0-1.0) |
+| `judge_model` | `str` | Same as agent | Model to use for judging |
+| `mode` | `'score' \| 'binary'` | `'score'` | Evaluation mode |
+
+## Examples
+
+### Single Criterion
+
+```python
+guardrail = llm_judge(
+    criteria='Is the response helpful and addresses the user question?',
+    threshold=0.7,
+)
+```
+
+### Multiple Criteria
+
+```python
+guardrail = llm_judge(
+    criteria=[
+        'Is the response factually accurate?',
+        'Is the tone professional?',
+        'Does it directly answer the question?',
+    ],
+    threshold=0.7,
+)
+```
+
+### Custom Judge Model
+
+```python
+# Use a faster/cheaper model for judging
+guardrail = llm_judge(
+    criteria='Is this response appropriate?',
+    judge_model='openai:gpt-4o-mini',
+    threshold=0.8,
+)
+```
+
+### Binary Mode
+
+```python
+# Pass/fail instead of scored
+guardrail = llm_judge(
+    criteria='Does this response contain medical advice?',
+    mode='binary',  # Returns 0 or 1
+    threshold=0.5,  # 0.5 = must pass
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Response failed quality evaluation',
+    'severity': 'medium',
+    'metadata': {
+        'score': 0.45,
+        'threshold': 0.7,
+        'criteria': ['Is the response helpful?'],
+    },
+    'suggestion': 'Provide a more complete and helpful response that directly addresses the question.',
+}
+```
+
+## Use Cases
+
+- **Quality assurance**: Ensure responses meet quality standards
+- **Brand voice**: Verify tone and style guidelines
+- **Compliance**: Check for policy-violating content
+- **Accuracy**: Evaluate factual correctness
+- **Completeness**: Ensure thorough answers
+
+<Aside type="tip">
+Use a faster, cheaper model for judging (like `gpt-4o-mini`) to reduce latency and cost. The judge doesn't need to be as capable as the main model.
+</Aside>
+
+## Combining with Auto-Retry
+
+LLM Judge works great with auto-retry:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        llm_judge(
+            criteria='Is the response professional and helpful?',
+            threshold=0.8,
+        ),
+    ],
+    max_retries=2,  # Let LLM improve quality
+)
+```
+
+The judge's feedback helps the LLM understand what to improve.
+
+## Example Criteria
+
+### Customer Support
+
+```python
+criteria=[
+    'Does the response address the customer issue?',
+    'Is the tone empathetic and professional?',
+    'Are next steps clearly provided?',
+]
+```
+
+### Technical Documentation
+
+```python
+criteria=[
+    'Is the explanation technically accurate?',
+    'Are code examples correct and runnable?',
+    'Is the language clear and unambiguous?',
+]
+```
+
+### Content Moderation
+
+```python
+criteria='Does this response comply with content policies and avoid harmful content?'
+```
+
+## Related
+
+- [Output Guardrails Guide](/guides/output-guardrails/)
+- [Auto-Retry](/guides/auto-retry/)
+- [autoevals Integration](/integrations/autoevals/)

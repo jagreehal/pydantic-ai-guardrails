@@ -1,0 +1,190 @@
+---
+title: Tool Validation
+description: Validate tool usage in agent responses
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Tool validation guardrails ensure your agent uses tools correctly and securely.
+
+## Available Guardrails
+
+| Guardrail | Purpose |
+|-----------|---------|
+| `require_tool_use()` | Ensure specific tools were called |
+| `tool_allowlist()` | Restrict which tools can be called |
+| `validate_tool_parameters()` | Validate tool call arguments |
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.output import (
+    require_tool_use,
+    tool_allowlist,
+    validate_tool_parameters,
+)
+```
+
+---
+
+## require_tool_use
+
+Ensure the agent called specific tools during execution.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `tool_names` | `list[str]` | Required | Tools that must be called |
+| `mode` | `'any' \| 'all'` | `'any'` | Require any or all tools |
+
+### Examples
+
+```python
+# At least one of these tools must be called
+guardrail = require_tool_use(
+    tool_names=['search', 'calculate'],
+    mode='any',
+)
+
+# All of these tools must be called
+guardrail = require_tool_use(
+    tool_names=['fetch_data', 'validate_data'],
+    mode='all',
+)
+```
+
+### Use Cases
+
+- Ensure agent uses retrieval before answering
+- Verify calculations were performed
+- Enforce workflow steps
+
+---
+
+## tool_allowlist
+
+Restrict which tools the agent is allowed to call.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `allowed_tools` | `list[str]` | Required | Only these tools are permitted |
+
+### Examples
+
+```python
+# Only allow safe, read-only tools
+guardrail = tool_allowlist(
+    allowed_tools=['search', 'get_weather', 'calculate'],
+)
+```
+
+### Use Cases
+
+- Prevent dangerous tool calls
+- Enforce role-based permissions
+- Sandbox agent capabilities
+
+<Aside type="tip">
+Use `tool_allowlist` for defense-in-depth. Even if a tool is registered, this guardrail can block it based on context.
+</Aside>
+
+---
+
+## validate_tool_parameters
+
+Validate the arguments passed to tool calls.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `schemas` | `dict[str, dict]` | Required | JSON schemas per tool |
+
+### Examples
+
+```python
+guardrail = validate_tool_parameters(
+    schemas={
+        'search': {
+            'type': 'object',
+            'properties': {
+                'query': {'type': 'string', 'minLength': 3},
+                'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+            },
+            'required': ['query'],
+        },
+        'send_email': {
+            'type': 'object',
+            'properties': {
+                'to': {'type': 'string', 'format': 'email'},
+                'subject': {'type': 'string', 'maxLength': 200},
+            },
+            'required': ['to', 'subject'],
+        },
+    }
+)
+```
+
+### Use Cases
+
+- Prevent SQL injection via tool parameters
+- Enforce parameter constraints
+- Validate email formats, URLs, etc.
+
+---
+
+## Combining Tool Guardrails
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.output import (
+    require_tool_use,
+    tool_allowlist,
+    validate_tool_parameters,
+)
+
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        # Only allow these tools
+        tool_allowlist(allowed_tools=['search', 'get_user']),
+        
+        # Search must be called
+        require_tool_use(tool_names=['search'], mode='any'),
+        
+        # Validate parameters
+        validate_tool_parameters(schemas={
+            'search': {
+                'type': 'object',
+                'properties': {
+                    'query': {'type': 'string', 'minLength': 1},
+                },
+            },
+        }),
+    ],
+)
+```
+
+## How It Works
+
+Tool guardrails access the message history via `GuardrailContext.messages`:
+
+```python
+async def check_tools(ctx: GuardrailContext, output: str) -> GuardrailResult:
+    for msg in ctx.messages or []:
+        if hasattr(msg, 'parts'):
+            for part in msg.parts:
+                if hasattr(part, 'tool_name'):
+                    # Found a tool call
+                    tool_name = part.tool_name
+                    tool_args = part.args
+                    # ... validate ...
+```
+
+## Related
+
+- [Output Guardrails Guide](/guides/output-guardrails/)
+- [Custom Guardrails](/guides/custom-guardrails/)

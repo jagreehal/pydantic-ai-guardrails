@@ -1,0 +1,106 @@
+---
+title: Regex Match
+description: Match output against regex patterns
+---
+
+The `regex_match` guardrail validates output against regex patterns.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.output import regex_match
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.output import regex_match
+
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        regex_match(pattern=r'^[A-Z]', must_match=True),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `pattern` | `str` | Required | Regex pattern |
+| `must_match` | `bool` | `True` | If True, output must match. If False, output must not match. |
+| `flags` | `int` | `0` | Regex flags (e.g., `re.IGNORECASE`) |
+
+## Examples
+
+### Must Match
+
+```python
+# Output must start with capital letter
+guardrail = regex_match(
+    pattern=r'^[A-Z]',
+    must_match=True,
+)
+```
+
+### Must Not Match
+
+```python
+# Block TODO markers
+guardrail = regex_match(
+    pattern=r'TODO|FIXME|XXX',
+    must_match=False,
+)
+```
+
+### Case Insensitive
+
+```python
+import re
+
+guardrail = regex_match(
+    pattern=r'error|warning|fail',
+    must_match=False,
+    flags=re.IGNORECASE,
+)
+```
+
+### Format Validation
+
+```python
+# Must be a valid date format
+guardrail = regex_match(
+    pattern=r'^\d{4}-\d{2}-\d{2}$',
+    must_match=True,
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Output does not match required pattern',
+    'severity': 'medium',
+    'metadata': {
+        'pattern': r'^[A-Z]',
+        'must_match': True,
+    },
+}
+```
+
+## Use Cases
+
+- **Format enforcement**: Dates, IDs, codes
+- **Content filtering**: Block unwanted phrases
+- **Structure validation**: Headers, sections
+- **Quality checks**: No placeholder text
+
+## Related
+
+- [Output Guardrails Guide](/guides/output-guardrails/)
+- [JSON Validator](/guardrails/output/json-validator/)

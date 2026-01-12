@@ -1,0 +1,109 @@
+---
+title: Pydantic AI Guardrails
+description: Production-ready guardrails for Pydantic AI agents
+template: splash
+hero:
+  tagline: Production-ready guardrails for Pydantic AI agents. Validate inputs, protect outputs, and build safer AI applications.
+  actions:
+    - text: Get Started
+      link: /getting-started/installation/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/jagreehal/pydantic-ai-guardrails
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why Pydantic AI Guardrails?
+
+<CardGrid stagger>
+  <Card title="Pydantic AI Native" icon="seti:python">
+    Follows Pydantic AI's patterns and integrates seamlessly with your existing agents. Uses the same dependency injection and context patterns you already know.
+  </Card>
+  <Card title="16 Built-in Guardrails" icon="approve-check">
+    Ready-to-use guardrails for PII detection, prompt injection, secrets, toxicity, LLM-as-a-judge, tool validation, and more.
+  </Card>
+  <Card title="Auto-Retry with Feedback" icon="sync">
+    When output guardrails fail, automatically retry with structured feedback so the LLM can self-correct.
+  </Card>
+  <Card title="Observable" icon="magnifier">
+    Built-in OpenTelemetry support for Logfire and other observability platforms. Trace every guardrail execution.
+  </Card>
+</CardGrid>
+
+## Quick Example
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import pii_detector, prompt_injection
+from pydantic_ai_guardrails.guardrails.output import secret_redaction
+
+# Create an agent with guardrails
+agent = Agent('openai:gpt-4o')
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[pii_detector(), prompt_injection()],
+    output_guardrails=[secret_redaction()],
+)
+
+result = await guarded_agent.run('Your prompt here')
+```
+
+## Features
+
+<CardGrid>
+  <Card title="Input Validation" icon="warning">
+    Block harmful prompts before they reach your model. Detect PII, prompt injection attacks, toxicity, and more.
+  </Card>
+  <Card title="Output Protection" icon="approve-check">
+    Validate model responses before returning to users. Catch leaked secrets, hallucinations, and policy violations.
+  </Card>
+  <Card title="Custom Guardrails" icon="pencil">
+    Write your own guardrails with simple async functions. Full access to dependencies and context.
+  </Card>
+  <Card title="Parallel Execution" icon="rocket">
+    Run multiple guardrails concurrently for better performance. Just set `parallel=True`.
+  </Card>
+  <Card title="Config-Based Setup" icon="document">
+    Load guardrails from JSON or YAML files. Compatible with OpenAI's guardrails config format.
+  </Card>
+  <Card title="Testing Utilities" icon="puzzle">
+    MockAgent, assertion helpers, and test case generators for thorough guardrail testing.
+  </Card>
+</CardGrid>
+
+## Comparison
+
+| Feature | pydantic-ai-guardrails | OpenAI Guardrails | LangChain Middleware |
+|---------|:----------------------:|:-----------------:|:--------------------:|
+| Pydantic AI native | Yes | No | No |
+| Auto-retry with feedback | Yes | No | No |
+| Parallel execution | Yes | Yes | Partial |
+| Config file loading | Yes | Yes | No |
+| LLM-as-a-judge | Yes | No | Custom |
+| Tool validation | Yes | No | No |
+| OpenTelemetry | Yes | No | Via LangSmith |
+
+## Next Steps
+
+<CardGrid>
+  <Card title="Installation" icon="laptop">
+    Get up and running with pip install.
+    [Install now](/getting-started/installation/)
+  </Card>
+  <Card title="Quick Start" icon="rocket">
+    Build your first guarded agent in 5 minutes.
+    [Start building](/getting-started/quick-start/)
+  </Card>
+  <Card title="Built-in Guardrails" icon="list-format">
+    Explore all 16 ready-to-use guardrails.
+    [View guardrails](/guardrails/overview/)
+  </Card>
+  <Card title="Custom Guardrails" icon="pencil">
+    Learn to write your own validation logic.
+    [Create custom](/guides/custom-guardrails/)
+  </Card>
+</CardGrid>

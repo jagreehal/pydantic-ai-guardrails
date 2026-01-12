@@ -1,0 +1,284 @@
+---
+title: Parallel Execution
+description: Run multiple guardrails concurrently for better performance
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+By default, guardrails run sequentially. With `parallel=True`, all guardrails run concurrently, reducing total latency.
+
+## When to Use Parallel Execution
+
+**Use parallel when:**
+- You have multiple independent guardrails
+- Guardrails involve I/O (API calls, database queries)
+- Total latency matters more than individual guardrail cost
+
+**Use sequential when:**
+- Guardrails depend on each other
+- You want to fail fast on cheap checks before expensive ones
+- Order of execution matters
+
+## Basic Usage
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import (
+    length_limit,
+    pii_detector,
+    prompt_injection,
+)
+
+agent = Agent('openai:gpt-4o')
+
+# Sequential (default)
+sequential_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=1000),
+        pii_detector(),
+        prompt_injection(),
+    ],
+    parallel=False,  # Default
+)
+
+# Parallel
+parallel_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=1000),
+        pii_detector(),
+        prompt_injection(),
+    ],
+    parallel=True,
+)
+```
+
+## Performance Comparison
+
+### Sequential Execution
+
+```
+length_limit (5ms) → pii_detector (50ms) → prompt_injection (100ms)
+Total: 155ms
+```
+
+If `length_limit` fails, the others don't run.
+
+### Parallel Execution
+
+```
+length_limit (5ms)  ─┐
+pii_detector (50ms) ─┼─→ Wait for all → First failure wins
+prompt_injection (100ms) ─┘
+Total: 100ms (slowest guardrail)
+```
+
+All guardrails run simultaneously. Total time is the slowest guardrail.
+
+## How It Works
+
+Under the hood, parallel execution uses `asyncio.gather()`:
+
+```python
+# What happens with parallel=True
+results = await asyncio.gather(
+    guardrail_1.validate(prompt, ctx),
+    guardrail_2.validate(prompt, ctx),
+    guardrail_3.validate(prompt, ctx),
+    return_exceptions=True,
+)
+```
+
+## Handling Violations
+
+With parallel execution, if multiple guardrails fail, the **first one to complete** that triggered is reported:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=100),   # Fast, fails
+        prompt_injection(),             # Slow, also fails
+    ],
+    parallel=True,
+)
+
+# length_limit violation is raised (it completed first)
+```
+
+<Aside type="note">
+In parallel mode, the "first failure" depends on which guardrail completes first, not the order in the list.
+</Aside>
+
+## Using Parallel Execution Functions Directly
+
+For custom scenarios, use the parallel execution helpers:
+
+```python
+from pydantic_ai_guardrails import (
+    execute_input_guardrails_parallel,
+    execute_output_guardrails_parallel,
+    create_context,
+    InputGuardrail,
+)
+
+# Create guardrails
+guardrails = [
+    InputGuardrail(check_length),
+    InputGuardrail(check_pii),
+    InputGuardrail(check_injection),
+]
+
+# Execute in parallel
+ctx = create_context(deps=my_deps)
+results = await execute_input_guardrails_parallel(
+    guardrails,
+    user_prompt,
+    ctx,
+)
+
+# results is list of (guardrail_name, GuardrailResult)
+for name, result in results:
+    if result['tripwire_triggered']:
+        print(f"{name} failed: {result.get('message')}")
+```
+
+## Best Practices
+
+### 1. Order Still Matters for Readability
+
+Even with parallel execution, order your guardrails logically:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        # Fast/cheap first (for readability)
+        length_limit(max_chars=1000),
+        blocked_keywords(keywords=['hack']),
+        
+        # Slower/expensive last
+        pii_detector(),
+        prompt_injection(),
+    ],
+    parallel=True,
+)
+```
+
+### 2. Consider Hybrid Approaches
+
+Run fast checks first, then expensive ones in parallel:
+
+```python
+# Custom approach: fast check, then parallel
+async def run_with_hybrid_guardrails(prompt):
+    # Fast sequential check first
+    length_result = await length_guardrail.validate(prompt, ctx)
+    if length_result['tripwire_triggered']:
+        raise InputGuardrailViolation('length_limit', length_result)
+    
+    # Expensive checks in parallel
+    results = await execute_input_guardrails_parallel(
+        expensive_guardrails,
+        prompt,
+        ctx,
+    )
+    # Handle results...
+```
+
+### 3. Watch Resource Usage
+
+Parallel execution uses more concurrent connections:
+
+```python
+# This makes 5 concurrent API calls
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        external_api_check_1(),  # API call
+        external_api_check_2(),  # API call
+        external_api_check_3(),  # API call
+        external_api_check_4(),  # API call
+        external_api_check_5(),  # API call
+    ],
+    parallel=True,
+)
+```
+
+Ensure your external services can handle the concurrent load.
+
+### 4. Telemetry Shows All Executions
+
+With telemetry enabled, you can see individual guardrail timings:
+
+```python
+from pydantic_ai_guardrails import configure_telemetry
+
+configure_telemetry(enabled=True)
+
+# Traces will show:
+# - All guardrails started at the same time
+# - Individual completion times
+# - Which one triggered (if any)
+```
+
+## Example: API-Based Guardrails
+
+Parallel execution shines when guardrails call external APIs:
+
+```python
+import httpx
+from pydantic_ai_guardrails import GuardrailResult, InputGuardrail
+
+async def check_toxicity_api(prompt: str) -> GuardrailResult:
+    """Call external toxicity API."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            'https://api.moderation.example/toxicity',
+            json={'text': prompt},
+        )
+        result = response.json()
+    
+    if result['score'] > 0.7:
+        return {
+            'tripwire_triggered': True,
+            'message': f'Toxicity score: {result["score"]}',
+            'severity': 'high',
+        }
+    return {'tripwire_triggered': False}
+
+async def check_pii_api(prompt: str) -> GuardrailResult:
+    """Call external PII detection API."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            'https://api.moderation.example/pii',
+            json={'text': prompt},
+        )
+        result = response.json()
+    
+    if result['pii_found']:
+        return {
+            'tripwire_triggered': True,
+            'message': f'PII detected: {result["types"]}',
+            'severity': 'high',
+        }
+    return {'tripwire_triggered': False}
+
+# Both API calls run concurrently
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        InputGuardrail(check_toxicity_api),
+        InputGuardrail(check_pii_api),
+    ],
+    parallel=True,  # ~100ms total instead of ~200ms
+)
+```
+
+## Next Steps
+
+- [Custom Guardrails](/guides/custom-guardrails/) - Write async guardrails for parallel execution
+- [Logfire Integration](/integrations/logfire/) - Trace parallel guardrail execution
+- [Error Handling](/guides/error-handling/) - Handle multiple potential failures

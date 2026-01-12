@@ -1,0 +1,294 @@
+---
+title: Error Handling
+description: Handle guardrail violations gracefully in your application
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+When a guardrail blocks a request, you need to handle it appropriately. This guide covers all the ways to respond to violations.
+
+## Exception Types
+
+The library provides specific exceptions for each guardrail type:
+
+```python
+from pydantic_ai_guardrails import (
+    GuardrailViolation,       # Base class
+    InputGuardrailViolation,  # Input guardrail blocked
+    OutputGuardrailViolation, # Output guardrail blocked
+)
+```
+
+### InputGuardrailViolation
+
+Raised when an input guardrail triggers:
+
+```python
+try:
+    result = await guarded_agent.run(prompt)
+except InputGuardrailViolation as e:
+    print(e.guardrail_name)  # Name of the guardrail
+    print(e.message)         # Human-readable message
+    print(e.severity)        # 'low', 'medium', 'high', 'critical'
+    print(e.result)          # Full GuardrailResult dict
+```
+
+### OutputGuardrailViolation
+
+Raised when an output guardrail triggers (after retries are exhausted):
+
+```python
+try:
+    result = await guarded_agent.run(prompt)
+except OutputGuardrailViolation as e:
+    print(e.guardrail_name)  # Name of the guardrail
+    print(e.message)         # Human-readable message  
+    print(e.severity)        # Severity level
+    print(e.retry_count)     # How many retries were attempted
+```
+
+## Blocking Modes
+
+The `on_block` parameter controls how violations are handled:
+
+<Tabs>
+  <TabItem label="raise (default)">
+    Raise an exception when any guardrail triggers:
+
+    ```python
+    guarded_agent = GuardedAgent(
+        agent,
+        input_guardrails=[...],
+        on_block='raise',  # Default
+    )
+
+    try:
+        result = await guarded_agent.run(prompt)
+    except InputGuardrailViolation as e:
+        # Handle the violation
+        return f"Request blocked: {e.message}"
+    ```
+  </TabItem>
+  <TabItem label="log">
+    Log a warning but continue execution:
+
+    ```python
+    import logging
+
+    logging.basicConfig(level=logging.WARNING)
+
+    guarded_agent = GuardedAgent(
+        agent,
+        input_guardrails=[...],
+        on_block='log',  # Log warning, don't raise
+    )
+
+    # This will log a warning but still return a result
+    result = await guarded_agent.run(malicious_prompt)
+    ```
+
+    Output:
+    ```
+    WARNING - Input guardrail prompt_injection triggered: Potential injection detected
+    ```
+  </TabItem>
+  <TabItem label="silent">
+    Silently ignore violations:
+
+    ```python
+    guarded_agent = GuardedAgent(
+        agent,
+        input_guardrails=[...],
+        on_block='silent',  # Ignore violations entirely
+    )
+
+    # Violations are silently ignored
+    result = await guarded_agent.run(prompt)
+    ```
+
+    <Aside type="caution">
+    Use `silent` mode carefully. It defeats the purpose of guardrails in most cases.
+    </Aside>
+  </TabItem>
+</Tabs>
+
+## Handling Different Severities
+
+The `severity` field helps you respond appropriately:
+
+```python
+try:
+    result = await guarded_agent.run(prompt)
+except InputGuardrailViolation as e:
+    if e.severity == 'critical':
+        # Log, alert security team, maybe block user
+        await alert_security(e)
+        raise HTTPException(403, 'Request forbidden')
+    
+    elif e.severity == 'high':
+        # Log and block
+        logger.warning(f'High severity violation: {e.message}')
+        return 'Your request could not be processed'
+    
+    elif e.severity == 'medium':
+        # Warn user, maybe allow retry
+        return f'Please rephrase: {e.message}'
+    
+    else:  # low
+        # Just log, maybe proceed
+        logger.info(f'Low severity: {e.message}')
+```
+
+## Accessing Violation Details
+
+The `result` property contains the full `GuardrailResult`:
+
+```python
+try:
+    result = await guarded_agent.run(prompt)
+except InputGuardrailViolation as e:
+    # Full result dict
+    print(e.result)
+    # {
+    #     'tripwire_triggered': True,
+    #     'message': 'PII detected: email',
+    #     'severity': 'high',
+    #     'metadata': {'pii_types': ['email'], 'count': 2},
+    #     'suggestion': 'Remove personal information',
+    # }
+    
+    # Access metadata
+    if 'metadata' in e.result:
+        pii_types = e.result['metadata'].get('pii_types', [])
+        print(f"Found PII: {pii_types}")
+```
+
+## Multiple Guardrails
+
+When multiple guardrails are configured, the **first** one to trigger causes the violation:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=100),   # Checked first
+        pii_detector(),                 # Checked second
+        prompt_injection(),             # Checked third
+    ],
+)
+
+# If prompt is too long, only length_limit violation is raised
+```
+
+With `parallel=True`, all guardrails run concurrently and the first violation found is raised.
+
+## Catching All Violations
+
+Use the base class to catch any guardrail violation:
+
+```python
+from pydantic_ai_guardrails import GuardrailViolation
+
+try:
+    result = await guarded_agent.run(prompt)
+except GuardrailViolation as e:
+    # Catches both Input and Output violations
+    print(f"Blocked by {e.guardrail_name}")
+```
+
+## FastAPI Integration
+
+Example error handler for FastAPI:
+
+```python
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic_ai_guardrails import (
+    GuardrailViolation,
+    InputGuardrailViolation,
+    OutputGuardrailViolation,
+)
+
+app = FastAPI()
+
+@app.exception_handler(InputGuardrailViolation)
+async def input_violation_handler(request: Request, exc: InputGuardrailViolation):
+    return JSONResponse(
+        status_code=400,
+        content={
+            'error': 'input_blocked',
+            'guardrail': exc.guardrail_name,
+            'message': exc.message,
+            'severity': exc.severity,
+        },
+    )
+
+@app.exception_handler(OutputGuardrailViolation)
+async def output_violation_handler(request: Request, exc: OutputGuardrailViolation):
+    return JSONResponse(
+        status_code=500,
+        content={
+            'error': 'output_blocked',
+            'guardrail': exc.guardrail_name,
+            'message': 'Response could not be generated safely',
+            'retries': exc.retry_count,
+        },
+    )
+
+@app.post('/chat')
+async def chat(prompt: str):
+    result = await guarded_agent.run(prompt)
+    return {'response': result.output}
+```
+
+## Combining with Auto-Retry
+
+For output guardrails, you can retry before raising:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[secret_redaction()],
+    max_retries=3,
+    on_block='raise',
+)
+
+try:
+    result = await guarded_agent.run(prompt)
+except OutputGuardrailViolation as e:
+    # Only raised after 3 retries failed
+    print(f"Failed after {e.retry_count} retries")
+```
+
+See [Auto-Retry](/guides/auto-retry/) for details.
+
+## Logging Best Practices
+
+```python
+import logging
+import json
+
+logger = logging.getLogger('guardrails')
+
+try:
+    result = await guarded_agent.run(prompt)
+except GuardrailViolation as e:
+    logger.warning(
+        'Guardrail violation',
+        extra={
+            'guardrail': e.guardrail_name,
+            'severity': e.severity,
+            'message': e.message,
+            'metadata': e.result.get('metadata'),
+            # Don't log the full prompt for privacy
+            'prompt_length': len(prompt),
+        },
+    )
+    raise
+```
+
+## Next Steps
+
+- [Auto-Retry](/guides/auto-retry/) - Retry output guardrails automatically
+- [Custom Guardrails](/guides/custom-guardrails/) - Set severity in your guardrails
+- [Logfire Integration](/integrations/logfire/) - Trace violations with OpenTelemetry

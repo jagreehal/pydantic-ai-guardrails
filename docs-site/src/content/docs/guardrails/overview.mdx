@@ -1,0 +1,152 @@
+---
+title: Built-in Guardrails Overview
+description: Complete reference for all 16 built-in guardrails
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Pydantic AI Guardrails includes 16 ready-to-use guardrails for common validation scenarios. All guardrails are factory functions that return configured `InputGuardrail` or `OutputGuardrail` instances.
+
+## Input Guardrails
+
+Input guardrails validate user prompts **before** they reach the LLM.
+
+| Guardrail | Purpose | Import |
+|-----------|---------|--------|
+| [`length_limit()`](/guardrails/input/length-limit/) | Limit prompt length by chars or tokens | `guardrails.input` |
+| [`pii_detector()`](/guardrails/input/pii-detector/) | Detect PII (email, phone, SSN, etc.) | `guardrails.input` |
+| [`prompt_injection()`](/guardrails/input/prompt-injection/) | Detect prompt injection attacks | `guardrails.input` |
+| [`toxicity_detector()`](/guardrails/input/toxicity/) | Detect toxic/harmful content | `guardrails.input` |
+| [`blocked_keywords()`](/guardrails/input/blocked-keywords/) | Block specific words or phrases | `guardrails.input` |
+| [`rate_limiter()`](/guardrails/input/rate-limit/) | Rate limit requests | `guardrails.input` |
+
+### Quick Import
+
+```python
+from pydantic_ai_guardrails.guardrails.input import (
+    length_limit,
+    pii_detector,
+    prompt_injection,
+    toxicity_detector,
+    blocked_keywords,
+    rate_limiter,
+)
+```
+
+## Output Guardrails
+
+Output guardrails validate LLM responses **after** generation but **before** returning to users.
+
+| Guardrail | Purpose | Import |
+|-----------|---------|--------|
+| [`secret_redaction()`](/guardrails/output/secret-redaction/) | Detect leaked secrets/API keys | `guardrails.output` |
+| [`llm_judge()`](/guardrails/output/llm-judge/) | LLM-as-a-judge quality evaluation | `guardrails.output` |
+| [`json_validator()`](/guardrails/output/json-validator/) | Validate JSON output structure | `guardrails.output` |
+| [`regex_match()`](/guardrails/output/regex-match/) | Match output against regex patterns | `guardrails.output` |
+| [`no_refusals()`](/guardrails/output/no-refusals/) | Detect when LLM refuses to answer | `guardrails.output` |
+| [`min_length()`](/guardrails/output/min-length/) | Ensure minimum response length | `guardrails.output` |
+| [`require_tool_use()`](/guardrails/output/tool-validation/) | Ensure specific tools were called | `guardrails.output` |
+| [`tool_allowlist()`](/guardrails/output/tool-validation/) | Restrict which tools can be called | `guardrails.output` |
+| [`validate_tool_parameters()`](/guardrails/output/tool-validation/) | Validate tool call arguments | `guardrails.output` |
+| [`hallucination_detector()`](/guardrails/output/hallucination/) | Detect potential hallucinations | `guardrails.output` |
+
+### Quick Import
+
+```python
+from pydantic_ai_guardrails.guardrails.output import (
+    secret_redaction,
+    llm_judge,
+    json_validator,
+    regex_match,
+    no_refusals,
+    min_length,
+    require_tool_use,
+    tool_allowlist,
+    validate_tool_parameters,
+    hallucination_detector,
+)
+```
+
+## Usage Example
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import (
+    length_limit,
+    pii_detector,
+    prompt_injection,
+)
+from pydantic_ai_guardrails.guardrails.output import (
+    secret_redaction,
+    llm_judge,
+)
+
+agent = Agent('openai:gpt-4o')
+
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=2000),
+        pii_detector(),
+        prompt_injection(sensitivity='high'),
+    ],
+    output_guardrails=[
+        secret_redaction(),
+        llm_judge(criteria='Is the response helpful?', threshold=0.7),
+    ],
+)
+```
+
+## Choosing the Right Guardrails
+
+### For Security
+
+| Concern | Recommended Guardrails |
+|---------|------------------------|
+| Prompt injection | `prompt_injection()`, `blocked_keywords()` |
+| Data leakage | `pii_detector()`, `secret_redaction()` |
+| Abuse prevention | `rate_limiter()`, `length_limit()`, `toxicity_detector()` |
+| Tool safety | `tool_allowlist()`, `validate_tool_parameters()` |
+
+### For Quality
+
+| Concern | Recommended Guardrails |
+|---------|------------------------|
+| Response quality | `llm_judge()`, `min_length()` |
+| Format compliance | `json_validator()`, `regex_match()` |
+| Completeness | `no_refusals()`, `require_tool_use()` |
+| Accuracy | `hallucination_detector()`, `llm_judge()` |
+
+### For Compliance
+
+| Requirement | Recommended Guardrails |
+|-------------|------------------------|
+| GDPR/HIPAA | `pii_detector()` |
+| Content moderation | `toxicity_detector()` |
+| Audit trail | Enable [telemetry](/integrations/logfire/) |
+| Human review | [Human-in-the-loop](/guides/human-in-the-loop/) |
+
+## Performance Considerations
+
+Guardrails have different performance characteristics:
+
+| Speed | Guardrails |
+|-------|------------|
+| Fast (under 5ms) | `length_limit()`, `blocked_keywords()`, `rate_limiter()` |
+| Medium (10-50ms) | `pii_detector()`, `prompt_injection()`, `secret_redaction()`, `regex_match()` |
+| Slow (100ms+) | `llm_judge()`, `toxicity_detector()` (ML-based) |
+
+<Aside type="tip">
+Order guardrails from fastest to slowest. Use `parallel=True` to run them concurrently.
+</Aside>
+
+## Extending Built-in Guardrails
+
+All built-in guardrails can be customized via parameters. For more complex logic, see [Custom Guardrails](/guides/custom-guardrails/).
+
+## Next Steps
+
+- Explore individual guardrail documentation in the sidebar
+- Learn about [Custom Guardrails](/guides/custom-guardrails/)
+- Set up [Logfire Integration](/integrations/logfire/) for observability

@@ -1,0 +1,103 @@
+---
+title: JSON Validator
+description: Validate JSON output structure
+---
+
+The `json_validator` guardrail ensures LLM output is valid JSON, optionally matching a schema.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.output import json_validator
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.output import json_validator
+
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        json_validator(),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `schema` | `dict \| None` | `None` | JSON Schema to validate against |
+
+## Examples
+
+### Basic JSON Validation
+
+```python
+# Just check it's valid JSON
+guardrail = json_validator()
+```
+
+### Schema Validation
+
+```python
+guardrail = json_validator(
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'age': {'type': 'integer', 'minimum': 0},
+            'email': {'type': 'string', 'format': 'email'},
+        },
+        'required': ['name', 'age'],
+    }
+)
+```
+
+### Array Schema
+
+```python
+guardrail = json_validator(
+    schema={
+        'type': 'array',
+        'items': {
+            'type': 'object',
+            'properties': {
+                'id': {'type': 'integer'},
+                'title': {'type': 'string'},
+            },
+        },
+    }
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Invalid JSON: Expecting property name',
+    'severity': 'high',
+    'metadata': {
+        'error': 'JSONDecodeError',
+        'position': 42,
+    },
+    'suggestion': 'Ensure output is valid JSON format',
+}
+```
+
+## Use Cases
+
+- **API responses**: Ensure structured output
+- **Data extraction**: Validate extracted entities
+- **Configuration**: Generate valid config files
+- **Integration**: Prepare data for downstream systems
+
+## Related
+
+- [Output Guardrails Guide](/guides/output-guardrails/)
+- [Regex Match](/guardrails/output/regex-match/)

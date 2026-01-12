@@ -58,3 +58,6 @@ Thumbs.db
 *.log
 .env
 .env.local
+
+# Documentation
+docs-site/node_modules/

@@ -1,0 +1,293 @@
+---
+title: Output Guardrails
+description: Validate and protect model responses before returning to users
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Output guardrails validate LLM responses **after** generation but **before** returning to users. Use them to:
+
+- Detect leaked secrets, API keys, or passwords
+- Evaluate response quality with LLM-as-a-judge
+- Validate JSON structure and content
+- Match output against regex patterns
+- Ensure the model didn't refuse to answer
+- Verify that required tools were called
+- Enforce minimum response length
+
+## How Output Guardrails Work
+
+```
+User Prompt → LLM → [Output Guardrails] → Response
+                          ↓
+                    Block or Retry
+```
+
+After the LLM generates a response, output guardrails validate it. If validation fails, you can:
+- **Block**: Raise an exception (default)
+- **Retry**: Automatically retry with feedback (see [Auto-Retry](/guides/auto-retry/))
+- **Log**: Log a warning and continue
+
+## Basic Usage
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.output import (
+    secret_redaction,
+    llm_judge,
+    min_length,
+)
+
+agent = Agent('openai:gpt-4o')
+
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        secret_redaction(),
+        min_length(min_chars=50),
+        llm_judge(criteria='Is the response helpful?'),
+    ],
+)
+```
+
+## Available Output Guardrails
+
+| Guardrail | Purpose | Key Parameters |
+|-----------|---------|----------------|
+| `secret_redaction()` | Detect leaked secrets | `patterns` |
+| `llm_judge()` | LLM-as-a-judge evaluation | `criteria`, `threshold` |
+| `json_validator()` | Validate JSON output | `schema` |
+| `regex_match()` | Match against patterns | `pattern`, `must_match` |
+| `no_refusals()` | Detect model refusals | `refusal_patterns` |
+| `min_length()` | Ensure minimum length | `min_chars` |
+| `require_tool_use()` | Ensure tools were called | `tool_names` |
+| `tool_allowlist()` | Restrict allowed tools | `allowed_tools` |
+| `validate_tool_parameters()` | Validate tool arguments | `schemas` |
+
+## Secret Redaction
+
+Detect API keys, passwords, and other secrets in responses:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import secret_redaction
+
+# Default patterns (API keys, passwords, tokens)
+guardrail = secret_redaction()
+
+# Custom patterns
+guardrail = secret_redaction(
+    patterns=[
+        r'sk-[a-zA-Z0-9]{32,}',     # OpenAI keys
+        r'AKIA[A-Z0-9]{16}',         # AWS keys
+        r'password[=:]\s*\S+',       # Passwords
+    ]
+)
+```
+
+Default detected patterns:
+- OpenAI API keys (`sk-...`)
+- AWS access keys (`AKIA...`)
+- GitHub tokens (`ghp_...`, `gho_...`)
+- Generic API key patterns
+- Password assignments
+
+## LLM Judge
+
+Use another LLM to evaluate response quality:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import llm_judge
+
+# Single criterion
+guardrail = llm_judge(
+    criteria='Is the response helpful and accurate?',
+    threshold=0.7,
+)
+
+# Multiple criteria
+guardrail = llm_judge(
+    criteria=[
+        'Is the response factually accurate?',
+        'Is the tone professional?',
+        'Does it directly answer the question?',
+    ],
+    threshold=0.7,
+    judge_model='openai:gpt-4o-mini',  # Use cheaper model for judging
+)
+```
+
+The judge returns a score from 0 to 1. If the score is below `threshold`, the guardrail triggers.
+
+<Aside type="tip">
+Use a faster, cheaper model for judging (like `gpt-4o-mini`) to reduce latency and cost.
+</Aside>
+
+## JSON Validator
+
+Ensure output is valid JSON, optionally matching a schema:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import json_validator
+
+# Just validate it's valid JSON
+guardrail = json_validator()
+
+# Validate against a schema
+guardrail = json_validator(
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'age': {'type': 'integer'},
+        },
+        'required': ['name', 'age'],
+    }
+)
+```
+
+## Regex Match
+
+Validate output against regex patterns:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import regex_match
+
+# Output MUST match this pattern
+guardrail = regex_match(
+    pattern=r'^[A-Z][a-z]+',  # Must start with capital letter
+    must_match=True,
+)
+
+# Output must NOT match this pattern
+guardrail = regex_match(
+    pattern=r'TODO|FIXME|XXX',
+    must_match=False,  # Block if pattern is found
+)
+```
+
+## No Refusals
+
+Detect when the model refuses to answer:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import no_refusals
+
+guardrail = no_refusals()
+```
+
+Detects phrases like:
+- "I cannot help with that"
+- "I'm not able to"
+- "As an AI, I don't"
+- "I apologize, but I cannot"
+
+<Aside>
+This is useful when you need the model to always attempt a response, even if uncertain.
+</Aside>
+
+## Tool Validation Guardrails
+
+### Require Tool Use
+
+Ensure specific tools were called:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import require_tool_use
+
+# At least one of these tools must be called
+guardrail = require_tool_use(
+    tool_names=['search', 'calculate'],
+    mode='any',  # or 'all' to require all tools
+)
+```
+
+### Tool Allowlist
+
+Restrict which tools can be called:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import tool_allowlist
+
+# Only these tools are allowed
+guardrail = tool_allowlist(
+    allowed_tools=['search', 'get_weather'],
+)
+```
+
+### Validate Tool Parameters
+
+Validate arguments passed to tools:
+
+```python
+from pydantic_ai_guardrails.guardrails.output import validate_tool_parameters
+
+guardrail = validate_tool_parameters(
+    schemas={
+        'search': {
+            'type': 'object',
+            'properties': {
+                'query': {'type': 'string', 'minLength': 3},
+            },
+            'required': ['query'],
+        },
+    }
+)
+```
+
+## Accessing Message History
+
+Output guardrails can access the full conversation via `GuardrailContext`:
+
+```python
+from pydantic_ai_guardrails import GuardrailContext, GuardrailResult, OutputGuardrail
+
+async def check_tool_calls(
+    ctx: GuardrailContext, 
+    output: str
+) -> GuardrailResult:
+    # Access message history
+    for msg in ctx.messages or []:
+        # Inspect tool calls in the conversation
+        if hasattr(msg, 'parts'):
+            for part in msg.parts:
+                if hasattr(part, 'tool_name'):
+                    print(f"Tool called: {part.tool_name}")
+    
+    return {'tripwire_triggered': False}
+
+guardrail = OutputGuardrail(check_tool_calls)
+```
+
+## Auto-Retry on Violation
+
+Instead of blocking, you can automatically retry with feedback:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[secret_redaction()],
+    max_retries=3,  # Retry up to 3 times
+)
+```
+
+When a guardrail fails, the library sends structured feedback to the LLM so it can self-correct. See [Auto-Retry](/guides/auto-retry/) for details.
+
+## Handling Violations
+
+```python
+from pydantic_ai_guardrails import OutputGuardrailViolation
+
+try:
+    result = await guarded_agent.run(prompt)
+except OutputGuardrailViolation as e:
+    print(f"Blocked by: {e.guardrail_name}")
+    print(f"Reason: {e.message}")
+    print(f"Retry count: {e.retry_count}")
+```
+
+## Next Steps
+
+- [Auto-Retry](/guides/auto-retry/) - Let the LLM self-correct on violations
+- [Custom Guardrails](/guides/custom-guardrails/) - Write your own output validation
+- [Tool Validation](/guardrails/output/tool-validation/) - Deep dive into tool guardrails

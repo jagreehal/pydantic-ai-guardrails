@@ -1,0 +1,370 @@
+---
+title: Testing
+description: Test your guardrails with built-in utilities
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Pydantic AI Guardrails includes testing utilities to help you verify your guardrails work correctly without making real LLM calls.
+
+## Testing Utilities
+
+```python
+from pydantic_ai_guardrails import (
+    assert_guardrail_passes,
+    assert_guardrail_blocks,
+    assert_guardrail_result,
+    create_test_context,
+    MockAgent,
+    GuardrailTestCases,
+)
+```
+
+## Basic Assertions
+
+### assert_guardrail_passes
+
+Verify a guardrail allows a given input:
+
+```python
+import pytest
+from pydantic_ai_guardrails import assert_guardrail_passes, InputGuardrail
+from pydantic_ai_guardrails.guardrails.input import length_limit
+
+@pytest.mark.asyncio
+async def test_length_limit_passes():
+    guardrail = length_limit(max_chars=100)
+    
+    # Should pass - prompt is under limit
+    await assert_guardrail_passes(guardrail, 'Hello, world!')
+```
+
+### assert_guardrail_blocks
+
+Verify a guardrail blocks a given input:
+
+```python
+@pytest.mark.asyncio
+async def test_length_limit_blocks():
+    guardrail = length_limit(max_chars=10)
+    
+    # Should block - prompt exceeds limit
+    await assert_guardrail_blocks(
+        guardrail, 
+        'This is a very long prompt that exceeds the limit',
+    )
+```
+
+### assert_guardrail_result
+
+For more detailed assertions on the result:
+
+```python
+@pytest.mark.asyncio
+async def test_guardrail_result_details():
+    guardrail = length_limit(max_chars=10)
+    
+    await assert_guardrail_result(
+        guardrail,
+        'This is too long',
+        tripwire_triggered=True,
+        severity='medium',
+    )
+```
+
+## Testing with Context
+
+Use `create_test_context` to test guardrails that use dependencies:
+
+```python
+from pydantic_ai_guardrails import create_test_context, GuardrailResult
+
+async def check_user_role(ctx, prompt: str) -> GuardrailResult:
+    """Only allow admin users."""
+    if ctx.deps.get('role') != 'admin':
+        return {
+            'tripwire_triggered': True,
+            'message': 'Admin access required',
+            'severity': 'high',
+        }
+    return {'tripwire_triggered': False}
+
+@pytest.mark.asyncio
+async def test_role_guardrail():
+    guardrail = InputGuardrail(check_user_role)
+    
+    # Test with admin role - should pass
+    admin_ctx = create_test_context(deps={'role': 'admin'})
+    await assert_guardrail_passes(guardrail, 'Hello', ctx=admin_ctx)
+    
+    # Test with user role - should block
+    user_ctx = create_test_context(deps={'role': 'user'})
+    await assert_guardrail_blocks(guardrail, 'Hello', ctx=user_ctx)
+```
+
+## MockAgent
+
+Test your guarded agents without making real LLM calls:
+
+```python
+from pydantic_ai_guardrails import MockAgent, GuardedAgent, InputGuardrail
+
+@pytest.mark.asyncio
+async def test_guarded_agent():
+    # MockAgent returns predictable responses
+    mock_agent = MockAgent(
+        responses=['This is a mock response'],
+    )
+    
+    guarded = GuardedAgent(
+        mock_agent,
+        input_guardrails=[length_limit(max_chars=100)],
+    )
+    
+    result = await guarded.run('Hello')
+    assert result.output == 'This is a mock response'
+```
+
+### MockAgent with Multiple Responses
+
+```python
+mock_agent = MockAgent(
+    responses=[
+        'First response',
+        'Second response',
+        'Third response',
+    ],
+)
+
+# Each call returns the next response
+result1 = await guarded.run('Hello')  # 'First response'
+result2 = await guarded.run('Hi')     # 'Second response'
+result3 = await guarded.run('Hey')    # 'Third response'
+```
+
+### MockAgent with Custom Behavior
+
+```python
+mock_agent = MockAgent(
+    response_func=lambda prompt: f'You said: {prompt}',
+)
+
+result = await guarded.run('Hello')
+assert result.output == 'You said: Hello'
+```
+
+## GuardrailTestCases
+
+Generate test cases for comprehensive coverage:
+
+```python
+from pydantic_ai_guardrails import GuardrailTestCases
+
+@pytest.mark.asyncio
+async def test_pii_detector_comprehensive():
+    guardrail = pii_detector()
+    
+    test_cases = GuardrailTestCases(
+        guardrail,
+        should_pass=[
+            'Hello, how are you?',
+            'The weather is nice today.',
+            'Please help me with my code.',
+        ],
+        should_block=[
+            'My email is test@example.com',
+            'Call me at 555-123-4567',
+            'My SSN is 123-45-6789',
+        ],
+    )
+    
+    await test_cases.run_all()
+```
+
+### With Expected Results
+
+```python
+test_cases = GuardrailTestCases(
+    guardrail,
+    cases=[
+        {
+            'input': 'Hello',
+            'should_pass': True,
+        },
+        {
+            'input': 'email: test@example.com',
+            'should_pass': False,
+            'expected_severity': 'high',
+            'expected_message_contains': 'email',
+        },
+    ],
+)
+```
+
+## Testing Custom Guardrails
+
+Complete example testing a custom guardrail:
+
+```python
+import pytest
+from pydantic_ai_guardrails import (
+    InputGuardrail,
+    GuardrailResult,
+    assert_guardrail_passes,
+    assert_guardrail_blocks,
+    create_test_context,
+)
+
+# Your custom guardrail
+async def block_competitors(prompt: str) -> GuardrailResult:
+    competitors = ['competitor_a', 'competitor_b']
+    prompt_lower = prompt.lower()
+    
+    found = [c for c in competitors if c in prompt_lower]
+    if found:
+        return {
+            'tripwire_triggered': True,
+            'message': f'Competitor mentions: {found}',
+            'severity': 'medium',
+        }
+    return {'tripwire_triggered': False}
+
+
+class TestBlockCompetitors:
+    @pytest.fixture
+    def guardrail(self):
+        return InputGuardrail(block_competitors, name='competitor_blocker')
+    
+    @pytest.mark.asyncio
+    async def test_allows_normal_prompts(self, guardrail):
+        await assert_guardrail_passes(guardrail, 'Tell me about your product')
+        await assert_guardrail_passes(guardrail, 'How does pricing work?')
+    
+    @pytest.mark.asyncio
+    async def test_blocks_competitor_mentions(self, guardrail):
+        await assert_guardrail_blocks(
+            guardrail, 
+            'How do you compare to competitor_a?'
+        )
+    
+    @pytest.mark.asyncio
+    async def test_case_insensitive(self, guardrail):
+        await assert_guardrail_blocks(
+            guardrail,
+            'What about COMPETITOR_A?'
+        )
+    
+    @pytest.mark.asyncio
+    async def test_partial_match(self, guardrail):
+        # Should pass - not an exact match
+        await assert_guardrail_passes(
+            guardrail,
+            'I am a competitor in the market'
+        )
+```
+
+## Testing Output Guardrails
+
+Output guardrails can access message history:
+
+```python
+from pydantic_ai_guardrails import OutputGuardrail, create_test_context
+
+async def check_tool_was_used(ctx, output: str) -> GuardrailResult:
+    """Ensure at least one tool was called."""
+    messages = ctx.messages or []
+    
+    tool_calls = sum(
+        1 for msg in messages 
+        if hasattr(msg, 'parts')
+        for part in msg.parts 
+        if hasattr(part, 'tool_name')
+    )
+    
+    if tool_calls == 0:
+        return {
+            'tripwire_triggered': True,
+            'message': 'No tools were used',
+            'severity': 'medium',
+        }
+    return {'tripwire_triggered': False}
+
+@pytest.mark.asyncio
+async def test_tool_usage_guardrail():
+    guardrail = OutputGuardrail(check_tool_was_used)
+    
+    # Create context with mock message history
+    ctx_with_tools = create_test_context(
+        messages=[
+            MockMessage(parts=[MockToolCall(tool_name='search')]),
+        ]
+    )
+    
+    ctx_without_tools = create_test_context(
+        messages=[
+            MockMessage(parts=[MockTextPart(content='Hello')]),
+        ]
+    )
+    
+    await assert_guardrail_passes(
+        guardrail, 
+        'Search results...', 
+        ctx=ctx_with_tools
+    )
+    
+    await assert_guardrail_blocks(
+        guardrail,
+        'I think...',
+        ctx=ctx_without_tools
+    )
+```
+
+## Integration Testing
+
+Test the full guarded agent flow:
+
+```python
+import pytest
+from pydantic_ai_guardrails import (
+    GuardedAgent,
+    MockAgent,
+    InputGuardrailViolation,
+    OutputGuardrailViolation,
+)
+from pydantic_ai_guardrails.guardrails.input import length_limit
+from pydantic_ai_guardrails.guardrails.output import min_length
+
+@pytest.mark.asyncio
+async def test_full_guarded_agent_flow():
+    mock = MockAgent(responses=['Short'])
+    
+    guarded = GuardedAgent(
+        mock,
+        input_guardrails=[length_limit(max_chars=100)],
+        output_guardrails=[min_length(min_chars=20)],
+    )
+    
+    # Input too long - should raise
+    with pytest.raises(InputGuardrailViolation) as exc:
+        await guarded.run('a' * 200)
+    assert exc.value.guardrail_name == 'length_limit'
+    
+    # Output too short - should raise
+    with pytest.raises(OutputGuardrailViolation) as exc:
+        await guarded.run('Hello')
+    assert exc.value.guardrail_name == 'min_length'
+```
+
+## Best Practices
+
+1. **Test both pass and block cases** for every guardrail
+2. **Test edge cases**: empty strings, very long inputs, special characters
+3. **Test with context** when guardrails use dependencies
+4. **Use MockAgent** to avoid LLM costs in tests
+5. **Test error messages** to ensure they're helpful
+
+## Next Steps
+
+- [Custom Guardrails](/guides/custom-guardrails/) - Write testable guardrails
+- [Error Handling](/guides/error-handling/) - Test violation handling
+- [pytest-asyncio docs](https://pytest-asyncio.readthedocs.io/)

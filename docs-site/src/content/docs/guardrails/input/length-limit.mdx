@@ -1,0 +1,106 @@
+---
+title: Length Limit
+description: Limit prompt length by characters or tokens
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `length_limit` guardrail prevents overly long prompts that could be expensive, slow, or abusive.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.input import length_limit
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import length_limit
+
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=1000),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_chars` | `int \| None` | `None` | Maximum character count |
+| `max_tokens` | `int \| None` | `None` | Maximum token count (requires tiktoken) |
+| `encoding` | `str` | `'cl100k_base'` | Tiktoken encoding for token counting |
+
+## Examples
+
+### Character Limit
+
+```python
+# Block prompts over 2000 characters
+guardrail = length_limit(max_chars=2000)
+```
+
+### Token Limit
+
+```python
+# Block prompts over 500 tokens
+# Requires: pip install tiktoken
+guardrail = length_limit(max_tokens=500)
+```
+
+### Both Limits
+
+```python
+# Block if either limit is exceeded
+guardrail = length_limit(
+    max_chars=2000,
+    max_tokens=500,
+)
+```
+
+### Custom Encoding
+
+```python
+# Use GPT-4 encoding
+guardrail = length_limit(
+    max_tokens=500,
+    encoding='cl100k_base',  # Default for GPT-4
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Input exceeds maximum length of 1000 characters',
+    'severity': 'medium',
+    'metadata': {
+        'length': 1500,
+        'max_length': 1000,
+        'limit_type': 'chars',
+    },
+}
+```
+
+## Use Cases
+
+- **Cost control**: Prevent expensive long prompts
+- **Abuse prevention**: Block prompt stuffing attacks
+- **Performance**: Ensure reasonable response times
+- **Rate limiting**: Indirect limit on resource usage
+
+<Aside type="tip">
+Character counting is faster than token counting. Use `max_chars` for performance-critical paths, `max_tokens` for accurate cost estimation.
+</Aside>
+
+## Related
+
+- [Input Guardrails Guide](/guides/input-guardrails/)
+- [Rate Limit](/guardrails/input/rate-limit/)

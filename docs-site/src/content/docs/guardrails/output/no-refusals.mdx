@@ -1,0 +1,104 @@
+---
+title: No Refusals
+description: Detect when the LLM refuses to answer
+---
+
+The `no_refusals` guardrail detects when the LLM refuses to answer or deflects the question.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.output import no_refusals
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.output import no_refusals
+
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        no_refusals(),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `refusal_patterns` | `list[str] \| None` | Default patterns | Custom refusal patterns |
+
+## Default Patterns
+
+Detects phrases like:
+
+- "I cannot help with that"
+- "I'm not able to"
+- "As an AI, I don't"
+- "I apologize, but I cannot"
+- "I'm sorry, but I can't"
+- "I don't have the ability to"
+
+## Examples
+
+### Default Detection
+
+```python
+guardrail = no_refusals()
+```
+
+### Custom Patterns
+
+```python
+guardrail = no_refusals(
+    refusal_patterns=[
+        r"I cannot",
+        r"I'm unable to",
+        r"outside my capabilities",
+        r"I don't have access",
+    ],
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Model refused to answer',
+    'severity': 'medium',
+    'metadata': {
+        'pattern_matched': "I cannot help with that",
+    },
+    'suggestion': 'Provide a helpful response that addresses the question directly',
+}
+```
+
+## Use Cases
+
+- **Completeness**: Ensure agent always attempts to help
+- **UX quality**: Avoid unhelpful responses
+- **Retry trigger**: Use with auto-retry to get better answers
+
+## With Auto-Retry
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[no_refusals()],
+    max_retries=2,
+)
+```
+
+The agent will retry with feedback to provide a helpful response.
+
+## Related
+
+- [Output Guardrails Guide](/guides/output-guardrails/)
+- [Auto-Retry](/guides/auto-retry/)
+- [LLM Judge](/guardrails/output/llm-judge/)

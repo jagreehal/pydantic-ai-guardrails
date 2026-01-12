@@ -1,0 +1,198 @@
+---
+title: Quick Start
+description: Build your first guarded agent in 5 minutes
+---
+
+import { Steps, Aside, Code } from '@astrojs/starlight/components';
+
+This guide walks you through creating your first Pydantic AI agent with guardrails.
+
+## Your First Guarded Agent
+
+<Steps>
+
+1. **Import the required modules**
+
+   ```python
+   from pydantic_ai import Agent
+   from pydantic_ai_guardrails import GuardedAgent
+   from pydantic_ai_guardrails.guardrails.input import length_limit, pii_detector
+   from pydantic_ai_guardrails.guardrails.output import secret_redaction
+   ```
+
+2. **Create a Pydantic AI agent**
+
+   ```python
+   agent = Agent('openai:gpt-4o')
+   ```
+
+3. **Wrap it with guardrails**
+
+   ```python
+   guarded_agent = GuardedAgent(
+       agent,
+       input_guardrails=[
+           length_limit(max_chars=1000),
+           pii_detector(),
+       ],
+       output_guardrails=[
+           secret_redaction(),
+       ],
+   )
+   ```
+
+4. **Run the agent**
+
+   ```python
+   result = await guarded_agent.run('Hello, how are you?')
+   print(result.output)
+   ```
+
+</Steps>
+
+## Complete Example
+
+Here's a complete, runnable example:
+
+```python title="hello_guardrails.py"
+import asyncio
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import length_limit, pii_detector
+from pydantic_ai_guardrails.guardrails.output import secret_redaction
+
+async def main():
+    # Create base agent
+    agent = Agent('openai:gpt-4o')
+
+    # Add guardrails
+    guarded_agent = GuardedAgent(
+        agent,
+        input_guardrails=[
+            length_limit(max_chars=1000),
+            pii_detector(),
+        ],
+        output_guardrails=[
+            secret_redaction(),
+        ],
+    )
+
+    # Run with guardrail protection
+    result = await guarded_agent.run('What is the capital of France?')
+    print(result.output)
+
+if __name__ == '__main__':
+    asyncio.run(main())
+```
+
+<Aside>
+This example is complete and can be run as-is. Make sure you have your `OPENAI_API_KEY` environment variable set.
+</Aside>
+
+## What Happened?
+
+When you called `guarded_agent.run()`:
+
+1. **Input guardrails ran first**
+   - `length_limit` checked that the prompt was under 1000 characters
+   - `pii_detector` scanned for emails, phone numbers, and other PII
+
+2. **The agent generated a response**
+   - Your prompt was sent to GPT-4o
+   - The model returned its response
+
+3. **Output guardrails validated the response**
+   - `secret_redaction` checked for API keys, passwords, and other secrets
+
+4. **Result was returned**
+   - All guardrails passed, so you got the response
+
+## Handling Violations
+
+When a guardrail blocks a request, it raises an exception:
+
+```python
+from pydantic_ai_guardrails import InputGuardrailViolation, OutputGuardrailViolation
+
+try:
+    # This prompt is too long
+    result = await guarded_agent.run('a' * 2000)
+except InputGuardrailViolation as e:
+    print(f"Blocked by: {e.guardrail_name}")
+    print(f"Reason: {e.message}")
+    print(f"Severity: {e.severity}")
+```
+
+Output:
+```
+Blocked by: length_limit
+Reason: Input exceeds maximum length of 1000 characters
+Severity: medium
+```
+
+## Alternative: Log Instead of Raise
+
+If you want to log violations instead of raising exceptions:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[length_limit(max_chars=1000)],
+    on_block='log',  # Log warning instead of raising
+)
+
+# This will log a warning but continue
+result = await guarded_agent.run('a' * 2000)
+```
+
+## Synchronous Usage
+
+For non-async contexts, use `run_sync()`:
+
+```python
+result = guarded_agent.run_sync('What is 2 + 2?')
+print(result.output)
+```
+
+## Using Built-in Guardrails
+
+The library includes 16 built-in guardrails. Here's a quick overview:
+
+### Input Guardrails
+
+```python
+from pydantic_ai_guardrails.guardrails.input import (
+    length_limit,        # Limit prompt length
+    pii_detector,        # Detect PII (emails, phones, SSNs)
+    prompt_injection,    # Detect prompt injection attacks
+    toxicity_detector,   # Detect toxic content
+    blocked_keywords,    # Block specific words/phrases
+    rate_limiter,        # Rate limit requests
+)
+```
+
+### Output Guardrails
+
+```python
+from pydantic_ai_guardrails.guardrails.output import (
+    secret_redaction,    # Detect leaked secrets
+    llm_judge,           # LLM-as-a-judge evaluation
+    json_validator,      # Validate JSON output
+    regex_match,         # Match output against patterns
+    no_refusals,         # Detect when LLM refuses
+    min_length,          # Ensure minimum length
+    require_tool_use,    # Ensure tools were called
+    tool_allowlist,      # Restrict which tools can be called
+)
+```
+
+See [Built-in Guardrails](/guardrails/overview/) for full documentation.
+
+## Next Steps
+
+Now that you've built your first guarded agent:
+
+- **[Input Guardrails Guide](/guides/input-guardrails/)** - Deep dive into input validation
+- **[Output Guardrails Guide](/guides/output-guardrails/)** - Protect your model's responses
+- **[Custom Guardrails](/guides/custom-guardrails/)** - Write your own validation logic
+- **[Auto-Retry](/guides/auto-retry/)** - Let the LLM self-correct on violations

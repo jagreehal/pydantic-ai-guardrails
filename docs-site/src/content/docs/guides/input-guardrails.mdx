@@ -1,0 +1,241 @@
+---
+title: Input Guardrails
+description: Validate and protect against harmful inputs before they reach your model
+---
+
+import { Aside, Code } from '@astrojs/starlight/components';
+
+Input guardrails validate user prompts **before** they're sent to the LLM. Use them to:
+
+- Block prompts that are too long or too short
+- Detect and block PII (emails, phone numbers, SSNs)
+- Prevent prompt injection attacks
+- Filter toxic or inappropriate content
+- Rate limit requests
+- Block specific keywords or patterns
+
+## How Input Guardrails Work
+
+```
+User Prompt → [Input Guardrails] → LLM → Response
+                    ↓
+              Block if violated
+```
+
+When you call `guarded_agent.run()`, input guardrails run first. If any guardrail's `tripwire_triggered` is `True`, the request is blocked before reaching the LLM.
+
+## Basic Usage
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import (
+    length_limit,
+    pii_detector,
+    prompt_injection,
+)
+
+agent = Agent('openai:gpt-4o')
+
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=2000),
+        pii_detector(),
+        prompt_injection(),
+    ],
+)
+```
+
+## Available Input Guardrails
+
+| Guardrail | Purpose | Key Parameters |
+|-----------|---------|----------------|
+| `length_limit()` | Limit prompt length | `max_chars`, `max_tokens` |
+| `pii_detector()` | Detect PII | `detect_types`, `threshold` |
+| `prompt_injection()` | Detect injection attacks | `sensitivity` |
+| `toxicity_detector()` | Detect toxic content | `categories`, `threshold` |
+| `blocked_keywords()` | Block specific words | `keywords`, `case_sensitive` |
+| `rate_limiter()` | Rate limit requests | `max_requests_per_minute` |
+
+## Length Limit
+
+Prevent overly long prompts that could be expensive or abusive:
+
+```python
+from pydantic_ai_guardrails.guardrails.input import length_limit
+
+# By character count
+guardrail = length_limit(max_chars=1000)
+
+# By token count (requires tiktoken)
+guardrail = length_limit(max_tokens=500)
+
+# Both
+guardrail = length_limit(max_chars=2000, max_tokens=500)
+```
+
+## PII Detector
+
+Detect personally identifiable information in prompts:
+
+```python
+from pydantic_ai_guardrails.guardrails.input import pii_detector
+
+# Default: detect all PII types
+guardrail = pii_detector()
+
+# Specific types only
+guardrail = pii_detector(
+    detect_types=['email', 'phone', 'ssn', 'credit_card']
+)
+```
+
+Detected PII types:
+- `email` - Email addresses
+- `phone` - Phone numbers
+- `ssn` - Social Security Numbers
+- `credit_card` - Credit card numbers
+- `ip_address` - IP addresses
+
+<Aside type="tip">
+The PII detector uses pattern matching by default. For more advanced detection, consider using [llm-guard integration](/integrations/llm-guard/).
+</Aside>
+
+## Prompt Injection
+
+Detect attempts to manipulate the LLM through prompt injection:
+
+```python
+from pydantic_ai_guardrails.guardrails.input import prompt_injection
+
+# Default sensitivity
+guardrail = prompt_injection()
+
+# High sensitivity (more false positives, fewer misses)
+guardrail = prompt_injection(sensitivity='high')
+
+# Low sensitivity (fewer false positives, more misses)
+guardrail = prompt_injection(sensitivity='low')
+```
+
+Detects patterns like:
+- "Ignore previous instructions"
+- "You are now..."
+- "Forget everything"
+- System prompt extraction attempts
+
+## Toxicity Detector
+
+Filter toxic, harmful, or inappropriate content:
+
+```python
+from pydantic_ai_guardrails.guardrails.input import toxicity_detector
+
+# Default: all categories
+guardrail = toxicity_detector()
+
+# Specific categories
+guardrail = toxicity_detector(
+    categories=['hate', 'violence', 'sexual'],
+    threshold=0.7
+)
+```
+
+<Aside type="note">
+The built-in toxicity detector uses keyword matching. For ML-based detection, use [llm-guard integration](/integrations/llm-guard/).
+</Aside>
+
+## Blocked Keywords
+
+Block prompts containing specific words or phrases:
+
+```python
+from pydantic_ai_guardrails.guardrails.input import blocked_keywords
+
+guardrail = blocked_keywords(
+    keywords=['confidential', 'secret', 'password'],
+    case_sensitive=False,
+)
+```
+
+## Rate Limiter
+
+Prevent abuse by limiting request frequency:
+
+```python
+from pydantic_ai_guardrails.guardrails.input import rate_limiter
+
+# Simple rate limit
+guardrail = rate_limiter(max_requests_per_minute=10)
+
+# Per-user rate limiting
+guardrail = rate_limiter(
+    max_requests_per_minute=20,
+    key_func=lambda ctx: ctx.deps.get('user_id'),
+)
+```
+
+## Combining Multiple Guardrails
+
+Guardrails are evaluated in order. If any fails, the request is blocked:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        # Fast checks first
+        length_limit(max_chars=2000),
+        blocked_keywords(keywords=['hack', 'exploit']),
+        
+        # More expensive checks last
+        pii_detector(),
+        prompt_injection(),
+    ],
+)
+```
+
+<Aside type="tip">
+Order guardrails from fastest to slowest. If a fast guardrail blocks the request, slower ones won't run.
+</Aside>
+
+## Parallel Execution
+
+For better performance, run guardrails in parallel:
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        length_limit(max_chars=2000),
+        pii_detector(),
+        prompt_injection(),
+    ],
+    parallel=True,  # Run all guardrails concurrently
+)
+```
+
+See [Parallel Execution](/guides/parallel-execution/) for details.
+
+## Handling Violations
+
+By default, violations raise `InputGuardrailViolation`:
+
+```python
+from pydantic_ai_guardrails import InputGuardrailViolation
+
+try:
+    result = await guarded_agent.run(malicious_prompt)
+except InputGuardrailViolation as e:
+    print(f"Blocked by: {e.guardrail_name}")
+    print(f"Reason: {e.message}")
+    print(f"Severity: {e.severity}")  # low, medium, high, critical
+```
+
+For alternative handling, see [Error Handling](/guides/error-handling/).
+
+## Next Steps
+
+- [Output Guardrails](/guides/output-guardrails/) - Validate model responses
+- [Custom Guardrails](/guides/custom-guardrails/) - Write your own input validation
+- [Error Handling](/guides/error-handling/) - Handle violations gracefully
