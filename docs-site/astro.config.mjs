@@ -4,7 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   site: 'https://jagreehal.github.io',
-  base: '/pydantic-ai-guardrails',
+  // Use base path for GitHub Pages deployment
+  // For local development, you can override with: BASE=/ pnpm dev
+  base: process.env.BASE || '/pydantic-ai-guardrails',
   integrations: [
     starlight({
       title: 'Pydantic AI Guardrails',
