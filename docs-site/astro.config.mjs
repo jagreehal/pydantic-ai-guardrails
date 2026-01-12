@@ -2,11 +2,16 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import tailwindcss from '@tailwindcss/vite';
 
+const base = process.env.BASE || '/pydantic-ai-guardrails';
+const isLocalDev = base === '/';
+
 export default defineConfig({
-  site: 'https://jagreehal.github.io',
+  // Always set site URL - Astro will automatically prepend base path to URLs
+  // For local dev with BASE=/, links will be relative (not absolute)
+  site: isLocalDev ? undefined : 'https://jagreehal.github.io',
   // Use base path for GitHub Pages deployment
   // For local development, you can override with: BASE=/ pnpm dev
-  base: process.env.BASE || '/pydantic-ai-guardrails',
+  base,
   integrations: [
     starlight({
       title: 'Pydantic AI Guardrails',
