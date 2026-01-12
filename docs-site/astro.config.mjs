@@ -1,6 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
-import tailwind from '@astrojs/tailwind';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   site: 'https://jagreehal.github.io',
@@ -9,9 +9,13 @@ export default defineConfig({
     starlight({
       title: 'Pydantic AI Guardrails',
       description: 'Production-ready guardrails for Pydantic AI agents',
-      social: {
-        github: 'https://github.com/jagreehal/pydantic-ai-guardrails',
-      },
+      social: [
+        {
+          icon: 'github',
+          label: 'GitHub',
+          href: 'https://github.com/jagreehal/pydantic-ai-guardrails',
+        },
+      ],
       editLink: {
         baseUrl: 'https://github.com/jagreehal/pydantic-ai-guardrails/edit/main/docs-site/',
       },
@@ -104,6 +108,8 @@ export default defineConfig({
       ],
       customCss: ['./src/styles/custom.css'],
     }),
-    tailwind({ applyBaseStyles: false }),
   ],
+  vite: {
+    plugins: [tailwindcss()],
+  },
 });

@@ -11,7 +11,7 @@
   "dependencies": {
     "@astrojs/starlight": "^0.37.2",
     "@astrojs/starlight-tailwind": "^4.0.2",
-    "@astrojs/tailwind": "^6.0.2",
+    "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.16.9",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18"
