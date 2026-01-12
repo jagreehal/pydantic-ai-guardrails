@@ -8,6 +8,7 @@
 [![PyPI](https://img.shields.io/pypi/v/pydantic-ai-guardrails.svg)](https://pypi.org/project/pydantic-ai-guardrails/)
 [![Python](https://img.shields.io/pypi/pyversions/pydantic-ai-guardrails.svg)](https://pypi.org/project/pydantic-ai-guardrails/)
 [![License](https://img.shields.io/github/license/jagreehal/pydantic-ai-guardrails.svg)](./LICENSE)
+[![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://jagreehal.github.io/pydantic-ai-guardrails/)
 
 </div>
 

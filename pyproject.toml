@@ -42,7 +42,7 @@ email = "jag@jagreehal.com"
 
 [project.urls]
 Homepage = "https://github.com/jagreehal/pydantic-ai-guardrails"
-Documentation = "https://github.com/jagreehal/pydantic-ai-guardrails#readme"
+Documentation = "https://jagreehal.github.io/pydantic-ai-guardrails/"
 Repository = "https://github.com/jagreehal/pydantic-ai-guardrails"
 Issues = "https://github.com/jagreehal/pydantic-ai-guardrails/issues"
 
