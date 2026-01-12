@@ -1,0 +1,139 @@
+---
+title: PII Detector
+description: Detect personally identifiable information in prompts
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `pii_detector` guardrail scans prompts for personally identifiable information (PII) like emails, phone numbers, and social security numbers.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.input import pii_detector
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import pii_detector
+
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        pii_detector(),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `detect_types` | `list[str] \| None` | All types | PII types to detect |
+| `threshold` | `float` | `0.0` | Minimum confidence threshold |
+
+## Detected PII Types
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| `email` | Email addresses | `user@example.com` |
+| `phone` | Phone numbers | `555-123-4567` |
+| `ssn` | Social Security Numbers | `123-45-6789` |
+| `credit_card` | Credit card numbers | `4111-1111-1111-1111` |
+| `ip_address` | IP addresses | `192.168.1.1` |
+
+## Examples
+
+### Detect All PII
+
+```python
+# Default: detect all PII types
+guardrail = pii_detector()
+```
+
+### Specific Types Only
+
+```python
+# Only detect email and phone
+guardrail = pii_detector(
+    detect_types=['email', 'phone'],
+)
+```
+
+### HIPAA-Focused
+
+```python
+# Healthcare-relevant PII
+guardrail = pii_detector(
+    detect_types=['ssn', 'phone', 'email'],
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'PII detected in input: email, phone',
+    'severity': 'high',
+    'metadata': {
+        'detected_types': ['email', 'phone'],
+        'count': 2,
+    },
+}
+```
+
+## Use Cases
+
+- **GDPR compliance**: Block prompts containing EU personal data
+- **HIPAA compliance**: Prevent PHI in healthcare applications
+- **Privacy protection**: Keep user data out of LLM context
+- **Data minimization**: Enforce data handling policies
+
+<Aside type="note">
+The built-in detector uses regex patterns. For more advanced detection with ML models, see [llm-guard integration](/integrations/llm-guard/).
+</Aside>
+
+<Aside type="caution">
+This guardrail **detects** PII but doesn't redact it. If you need to process prompts containing PII, preprocess them before calling the agent.
+</Aside>
+
+## Advanced: Custom PII Patterns
+
+For organization-specific identifiers, create a custom guardrail:
+
+```python
+import re
+from pydantic_ai_guardrails import GuardrailResult, InputGuardrail
+
+async def custom_pii_detector(prompt: str) -> GuardrailResult:
+    patterns = {
+        'employee_id': r'EMP-\d{6}',
+        'account_number': r'ACC-[A-Z]{2}\d{8}',
+    }
+    
+    found = []
+    for pii_type, pattern in patterns.items():
+        if re.search(pattern, prompt):
+            found.append(pii_type)
+    
+    if found:
+        return {
+            'tripwire_triggered': True,
+            'message': f'Custom PII detected: {found}',
+            'severity': 'high',
+        }
+    return {'tripwire_triggered': False}
+
+guardrail = InputGuardrail(custom_pii_detector)
+```
+
+## Related
+
+- [Input Guardrails Guide](/guides/input-guardrails/)
+- [llm-guard Integration](/integrations/llm-guard/)
+- [Secret Redaction](/guardrails/output/secret-redaction/) (for output)

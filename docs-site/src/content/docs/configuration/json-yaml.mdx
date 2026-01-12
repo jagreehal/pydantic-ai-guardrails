@@ -1,0 +1,474 @@
+---
+title: JSON/YAML Configuration
+description: Configure guardrails via configuration files
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Configure guardrails declaratively using JSON or YAML files. This enables teams to manage guardrail settings without code changes.
+
+## Quick Start
+
+<Tabs>
+<TabItem label="JSON">
+```json
+{
+  "version": 1,
+  "settings": {
+    "parallel": true,
+    "on_block": "raise"
+  },
+  "input": {
+    "guardrails": [
+      {"name": "length_limit", "config": {"max_chars": 500}},
+      {"name": "pii_detector", "config": {"detect_types": ["email", "ssn"]}}
+    ]
+  },
+  "output": {
+    "guardrails": [
+      {"name": "secret_redaction", "config": {}},
+      {"name": "min_length", "config": {"min_chars": 20}}
+    ]
+  }
+}
+```
+</TabItem>
+<TabItem label="YAML">
+```yaml
+version: 1
+settings:
+  parallel: true
+  on_block: raise
+
+input:
+  guardrails:
+    - name: length_limit
+      config:
+        max_chars: 500
+    - name: pii_detector
+      config:
+        detect_types:
+          - email
+          - ssn
+
+output:
+  guardrails:
+    - name: secret_redaction
+      config: {}
+    - name: min_length
+      config:
+        min_chars: 20
+```
+</TabItem>
+</Tabs>
+
+## Loading Configuration
+
+### One-Line Setup
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import create_guarded_agent_from_config
+
+guarded_agent = create_guarded_agent_from_config(
+    Agent('openai:gpt-4o'),
+    'guardrails.json',  # or 'guardrails.yaml'
+)
+```
+
+### Manual Loading
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import (
+    GuardedAgent,
+    load_config,
+    load_guardrails_from_config,
+)
+
+# Load config file
+config = load_config('guardrails.json')
+
+# Extract guardrails and settings
+input_guardrails, output_guardrails, settings = load_guardrails_from_config(config)
+
+# Create guarded agent
+guarded_agent = GuardedAgent(
+    Agent('openai:gpt-4o'),
+    input_guardrails=input_guardrails,
+    output_guardrails=output_guardrails,
+    **settings,
+)
+```
+
+## Configuration Schema
+
+### Top-Level Structure
+
+```json
+{
+  "version": 1,
+  "settings": { ... },
+  "input": { ... },
+  "output": { ... }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | `int` | Schema version (currently `1`) |
+| `settings` | `object` | Global settings |
+| `input` | `object` | Input guardrail configuration |
+| `output` | `object` | Output guardrail configuration |
+
+### Settings
+
+```json
+{
+  "settings": {
+    "parallel": true,
+    "on_block": "raise",
+    "telemetry": true,
+    "max_retries": 3
+  }
+}
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `parallel` | `bool` | `false` | Run guardrails concurrently |
+| `on_block` | `string` | `"raise"` | Action on violation: `"raise"` or `"log"` |
+| `telemetry` | `bool` | `false` | Enable OpenTelemetry tracing |
+| `max_retries` | `int` | `0` | Auto-retry attempts for output violations |
+
+### Guardrail Definitions
+
+```json
+{
+  "input": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "guardrail_type",
+        "config": { ... }
+      }
+    ]
+  }
+}
+```
+
+## Available Guardrails
+
+### Input Guardrails
+
+#### length_limit
+
+```json
+{
+  "name": "length_limit",
+  "config": {
+    "max_chars": 1000,
+    "max_tokens": 250
+  }
+}
+```
+
+#### pii_detector
+
+```json
+{
+  "name": "pii_detector",
+  "config": {
+    "detect_types": ["email", "phone", "ssn", "credit_card"],
+    "action": "block"
+  }
+}
+```
+
+#### prompt_injection
+
+```json
+{
+  "name": "prompt_injection",
+  "config": {
+    "model": "openai:gpt-4o-mini",
+    "threshold": 0.7
+  }
+}
+```
+
+#### toxicity
+
+```json
+{
+  "name": "toxicity",
+  "config": {
+    "threshold": 0.5
+  }
+}
+```
+
+#### blocked_keywords
+
+```json
+{
+  "name": "blocked_keywords",
+  "config": {
+    "keywords": ["forbidden", "restricted"],
+    "case_sensitive": false
+  }
+}
+```
+
+#### rate_limit
+
+```json
+{
+  "name": "rate_limit",
+  "config": {
+    "max_requests": 100,
+    "window_seconds": 60
+  }
+}
+```
+
+### Output Guardrails
+
+#### secret_redaction
+
+```json
+{
+  "name": "secret_redaction",
+  "config": {
+    "patterns": ["openai_api_key", "github_token", "aws_secret"]
+  }
+}
+```
+
+#### min_length
+
+```json
+{
+  "name": "min_length",
+  "config": {
+    "min_chars": 50,
+    "min_words": 10
+  }
+}
+```
+
+#### llm_judge
+
+```json
+{
+  "name": "llm_judge",
+  "config": {
+    "rubric": "Response should be helpful and professional",
+    "model": "openai:gpt-4o-mini",
+    "threshold": 0.7
+  }
+}
+```
+
+#### json_validator
+
+```json
+{
+  "name": "json_validator",
+  "config": {
+    "schema": {
+      "type": "object",
+      "required": ["answer"],
+      "properties": {
+        "answer": {"type": "string"}
+      }
+    }
+  }
+}
+```
+
+#### regex_match
+
+```json
+{
+  "name": "regex_match",
+  "config": {
+    "pattern": "^[A-Z].*\\.$",
+    "must_match": true
+  }
+}
+```
+
+#### no_refusals
+
+```json
+{
+  "name": "no_refusals",
+  "config": {}
+}
+```
+
+## Environment-Specific Configs
+
+Use different configs per environment:
+
+```python
+import os
+from pathlib import Path
+
+env = os.getenv('ENVIRONMENT', 'development')
+config_path = Path(f'configs/{env}_guardrails.json')
+
+guarded_agent = create_guarded_agent_from_config(agent, config_path)
+```
+
+Directory structure:
+```
+configs/
+  development_guardrails.json
+  staging_guardrails.json
+  production_guardrails.json
+```
+
+## Programmatic Configuration
+
+Create configs in code:
+
+```python
+from pydantic_ai_guardrails import GuardrailConfig
+
+config = GuardrailConfig(
+    version=1,
+    settings={
+        'parallel': True,
+        'on_block': 'raise',
+    },
+    input_guardrails=[
+        {'type': 'length_limit', 'config': {'max_chars': 500}},
+    ],
+    output_guardrails=[
+        {'type': 'secret_redaction', 'config': {}},
+    ],
+)
+
+# Export to dict/JSON
+config_dict = config.to_dict()
+```
+
+## YAML Requirements
+
+YAML support requires PyYAML:
+
+```bash
+pip install pyyaml
+```
+
+<Aside type="note">
+YAML is optional. JSON works without additional dependencies.
+</Aside>
+
+## Validation
+
+Configs are validated on load:
+
+```python
+from pydantic_ai_guardrails import load_config
+from pydantic_ai_guardrails.exceptions import ConfigurationError
+
+try:
+    config = load_config('guardrails.json')
+except ConfigurationError as e:
+    print(f'Invalid config: {e}')
+```
+
+## Complete Example
+
+### config/production.json
+
+```json
+{
+  "version": 1,
+  "settings": {
+    "parallel": true,
+    "on_block": "raise",
+    "telemetry": true,
+    "max_retries": 2
+  },
+  "input": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "length_limit",
+        "config": {"max_chars": 2000, "max_tokens": 500}
+      },
+      {
+        "name": "pii_detector",
+        "config": {
+          "detect_types": ["email", "phone", "ssn", "credit_card"],
+          "action": "block"
+        }
+      },
+      {
+        "name": "prompt_injection",
+        "config": {"threshold": 0.8}
+      },
+      {
+        "name": "toxicity",
+        "config": {"threshold": 0.3}
+      }
+    ]
+  },
+  "output": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "secret_redaction",
+        "config": {"patterns": ["openai_api_key", "aws_secret", "github_token"]}
+      },
+      {
+        "name": "min_length",
+        "config": {"min_chars": 20}
+      },
+      {
+        "name": "llm_judge",
+        "config": {
+          "rubric": "Response is helpful, accurate, and professional",
+          "threshold": 0.7
+        }
+      }
+    ]
+  }
+}
+```
+
+### app.py
+
+```python
+import os
+from pathlib import Path
+
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import create_guarded_agent_from_config
+
+# Load environment-specific config
+env = os.getenv('ENVIRONMENT', 'development')
+config_path = Path(__file__).parent / 'config' / f'{env}.json'
+
+agent = Agent(
+    'openai:gpt-4o',
+    system_prompt='You are a helpful assistant.',
+)
+
+guarded_agent = create_guarded_agent_from_config(agent, config_path)
+
+# Use in your application
+async def handle_request(user_message: str) -> str:
+    result = await guarded_agent.run(user_message)
+    return result.output
+```
+
+## Next Steps
+
+- [OpenAI Format](/configuration/openai-format/)
+- [Error Handling](/guides/error-handling/)
+- [Production Monitoring](/integrations/logfire/)

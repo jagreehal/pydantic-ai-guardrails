@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for Pydantic AI Guardrails docs */
+
+/* Match Pydantic's pink accent color scheme */
+:root {
+  --sl-color-accent-low: #fce7f3;
+  --sl-color-accent: #db2777;
+  --sl-color-accent-high: #831843;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #500724;
+  --sl-color-accent: #f472b6;
+  --sl-color-accent-high: #fce7f3;
+}
+
+/* Code block styling */
+.expressive-code {
+  margin-block: 1.5rem;
+}
+
+/* Better table styling */
+table {
+  display: table;
+  width: 100%;
+}
+
+/* Callout/admonition styling improvements */
+.starlight-aside {
+  border-radius: 0.5rem;
+}
+
+/* Navigation improvements */
+nav[aria-label='Main'] a:hover {
+  color: var(--sl-color-accent);
+}

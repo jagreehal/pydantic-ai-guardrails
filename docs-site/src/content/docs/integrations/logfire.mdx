@@ -1,0 +1,284 @@
+---
+title: Logfire Integration
+description: Trace and monitor guardrail execution with OpenTelemetry
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Pydantic AI Guardrails includes built-in OpenTelemetry support for tracing guardrail execution. This integrates seamlessly with [Pydantic Logfire](https://pydantic.dev/logfire) and other OpenTelemetry-compatible platforms.
+
+## Why Observability?
+
+With telemetry enabled, you can:
+
+- **Trace** every guardrail execution with timing
+- **Monitor** violation rates and severity distribution
+- **Debug** why specific requests were blocked
+- **Alert** on unusual violation patterns
+- **Analyze** guardrail performance over time
+
+## Setup
+
+<Steps>
+
+1. **Install the telemetry extra**
+
+   ```bash
+   pip install pydantic-ai-guardrails[telemetry]
+   ```
+
+2. **Configure telemetry**
+
+   ```python
+   from pydantic_ai_guardrails import configure_telemetry
+
+   configure_telemetry(
+       enabled=True,
+       service_name='my-agent-service',
+   )
+   ```
+
+3. **Use GuardedAgent as normal**
+
+   ```python
+   # Telemetry is automatically collected
+   result = await guarded_agent.run(prompt)
+   ```
+
+</Steps>
+
+## Logfire Integration
+
+For the best experience, use [Pydantic Logfire](https://pydantic.dev/logfire):
+
+```python
+import logfire
+from pydantic_ai_guardrails import configure_telemetry
+
+# Initialize Logfire
+logfire.configure()
+
+# Enable guardrails telemetry
+configure_telemetry(enabled=True)
+```
+
+Logfire provides:
+- Real-time trace visualization
+- Automatic error tracking
+- Performance dashboards
+- Query language for analysis
+
+## What's Traced
+
+### Agent Execution Span
+
+Each `guarded_agent.run()` creates a parent span:
+
+```
+guardrails.agent_execution
+├── input_guardrail_count: 3
+├── output_guardrail_count: 2
+└── parallel: true
+```
+
+### Guardrail Validation Spans
+
+Each guardrail creates a child span:
+
+```
+guardrails.validation
+├── guardrail_name: "pii_detector"
+├── guardrail_type: "input"
+├── input_size: 256
+├── duration_ms: 12.5
+├── tripwire_triggered: false
+└── severity: null
+```
+
+### Violation Events
+
+Violations are recorded as span events:
+
+```
+guardrails.violation
+├── guardrail_name: "prompt_injection"
+├── guardrail_type: "input"
+├── severity: "high"
+└── message: "Potential injection detected"
+```
+
+### Retry Attempts
+
+Auto-retry attempts are tracked:
+
+```
+guardrails.retry
+├── attempt: 1
+├── max_retries: 3
+├── violation_count: 1
+└── feedback: "The previous response..."
+```
+
+## Configuration Options
+
+```python
+from pydantic_ai_guardrails import configure_telemetry
+
+configure_telemetry(
+    enabled=True,                    # Enable/disable telemetry
+    service_name='my-service',       # Service name in traces
+    service_version='1.0.0',         # Service version
+)
+```
+
+## Custom Telemetry
+
+Access the telemetry instance for custom instrumentation:
+
+```python
+from pydantic_ai_guardrails import get_telemetry
+
+telemetry = get_telemetry()
+
+# Create custom span
+with telemetry.span_guardrail_validation('my_custom_check', 'input', 100):
+    # Your custom validation logic
+    result = await custom_check(prompt)
+    
+    # Record custom events
+    if result.flagged:
+        telemetry.record_violation(
+            'my_custom_check',
+            'input',
+            'high',
+            'Custom check failed',
+        )
+```
+
+## Alternative Backends
+
+The telemetry uses standard OpenTelemetry, so it works with any compatible backend:
+
+### Jaeger
+
+```python
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry import trace
+
+# Configure Jaeger
+jaeger_exporter = JaegerExporter(
+    agent_host_name='localhost',
+    agent_port=6831,
+)
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
+trace.set_tracer_provider(provider)
+
+# Then configure guardrails telemetry
+configure_telemetry(enabled=True)
+```
+
+### OTLP (Datadog, New Relic, etc.)
+
+```python
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry import trace
+
+otlp_exporter = OTLPSpanExporter(
+    endpoint='your-collector:4317',
+)
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+trace.set_tracer_provider(provider)
+
+configure_telemetry(enabled=True)
+```
+
+## Example: Monitoring Dashboard
+
+With Logfire or Grafana, you can create dashboards showing:
+
+```sql
+-- Violation rate by guardrail
+SELECT 
+    guardrail_name,
+    COUNT(*) as violations,
+    AVG(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical_rate
+FROM guardrails_violations
+WHERE timestamp > NOW() - INTERVAL '1 hour'
+GROUP BY guardrail_name
+ORDER BY violations DESC
+```
+
+```sql
+-- Average validation time by guardrail
+SELECT 
+    guardrail_name,
+    AVG(duration_ms) as avg_ms,
+    P95(duration_ms) as p95_ms
+FROM guardrails_validations
+WHERE timestamp > NOW() - INTERVAL '1 hour'
+GROUP BY guardrail_name
+```
+
+## Best Practices
+
+### 1. Always Enable in Production
+
+```python
+import os
+
+configure_telemetry(
+    enabled=os.getenv('ENVIRONMENT') == 'production',
+)
+```
+
+### 2. Set Service Metadata
+
+```python
+configure_telemetry(
+    enabled=True,
+    service_name='customer-support-agent',
+    service_version=os.getenv('APP_VERSION', 'unknown'),
+)
+```
+
+### 3. Monitor Key Metrics
+
+Set up alerts for:
+- Violation rate spikes
+- Increased latency (P95 > threshold)
+- Critical severity violations
+- Retry exhaustion (max_retries reached)
+
+### 4. Sample in High-Volume Scenarios
+
+For very high traffic, consider sampling:
+
+```python
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+
+provider = TracerProvider(
+    sampler=TraceIdRatioBased(0.1),  # Sample 10%
+)
+```
+
+## Disabling Telemetry
+
+```python
+configure_telemetry(enabled=False)
+```
+
+Or don't call `configure_telemetry()` at all - telemetry is disabled by default.
+
+## Next Steps
+
+- [Pydantic Logfire Docs](https://logfire.pydantic.dev/)
+- [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/)
+- [Error Handling](/guides/error-handling/) - Handle traced violations

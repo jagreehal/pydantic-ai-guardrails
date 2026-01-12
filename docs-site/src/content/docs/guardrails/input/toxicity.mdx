@@ -1,0 +1,119 @@
+---
+title: Toxicity Detector
+description: Detect toxic, harmful, or inappropriate content
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `toxicity_detector` guardrail filters prompts containing toxic, harmful, or inappropriate content.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.input import toxicity_detector
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import toxicity_detector
+
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        toxicity_detector(),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `categories` | `list[str] \| None` | All categories | Categories to detect |
+| `threshold` | `float` | `0.5` | Detection threshold (0.0-1.0) |
+
+## Categories
+
+| Category | Description |
+|----------|-------------|
+| `hate` | Hate speech and discrimination |
+| `violence` | Violent content or threats |
+| `sexual` | Sexual or adult content |
+| `harassment` | Bullying or harassment |
+| `self_harm` | Self-harm or suicide content |
+| `profanity` | Profane language |
+
+## Examples
+
+### Detect All Categories
+
+```python
+guardrail = toxicity_detector()
+```
+
+### Specific Categories
+
+```python
+guardrail = toxicity_detector(
+    categories=['hate', 'violence', 'harassment'],
+)
+```
+
+### Adjust Threshold
+
+```python
+# More strict
+guardrail = toxicity_detector(threshold=0.3)
+
+# More lenient
+guardrail = toxicity_detector(threshold=0.7)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Toxic content detected: hate, violence',
+    'severity': 'high',
+    'metadata': {
+        'categories_detected': ['hate', 'violence'],
+        'threshold': 0.5,
+    },
+}
+```
+
+## Use Cases
+
+- **Content moderation**: Filter inappropriate user inputs
+- **Brand safety**: Protect against offensive content
+- **Compliance**: Meet platform content policies
+- **User safety**: Prevent harmful interactions
+
+<Aside type="note">
+The built-in detector uses keyword matching. For ML-based detection with nuanced understanding, see [llm-guard integration](/integrations/llm-guard/) or [autoevals integration](/integrations/autoevals/).
+</Aside>
+
+## Advanced: ML-Based Detection
+
+For production applications, consider ML-based detection:
+
+```python
+# Using llm-guard (recommended for production)
+from llm_guard.input_scanners import Toxicity
+
+# Using autoevals
+from autoevals.llm import Moderation
+```
+
+See [Integrations](/integrations/llm-guard/) for setup instructions.
+
+## Related
+
+- [Input Guardrails Guide](/guides/input-guardrails/)
+- [llm-guard Integration](/integrations/llm-guard/)
+- [autoevals Integration](/integrations/autoevals/)

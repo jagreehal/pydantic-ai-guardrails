@@ -1,0 +1,278 @@
+---
+title: Pydantic Evals Integration
+description: Use pydantic-evals evaluators as guardrails
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+[pydantic-evals](https://ai.pydantic.dev/evals/) is Pydantic AI's evaluation framework. This library provides first-class integration, allowing you to use any pydantic-evals evaluator as a guardrail.
+
+## Installation
+
+```bash
+pip install pydantic-ai-guardrails[evals]
+```
+
+## Quick Start
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.evals import output_contains
+
+guarded_agent = GuardedAgent(
+    Agent('openai:gpt-4o'),
+    output_guardrails=[
+        output_contains('thank you', case_sensitive=False),
+    ],
+)
+```
+
+## Available Adapters
+
+The library provides convenience adapters for common evaluators:
+
+### output_contains
+
+Check if output contains specific text:
+
+```python
+from pydantic_ai_guardrails.evals import output_contains
+
+guard = output_contains('Python', case_sensitive=False)
+```
+
+### output_equals
+
+Check for exact equality:
+
+```python
+from pydantic_ai_guardrails.evals import output_equals
+
+guard = output_equals('CONFIRMED')
+```
+
+### output_is_instance
+
+Validate output type:
+
+```python
+from pydantic_ai_guardrails.evals import output_is_instance
+
+guard = output_is_instance('dict')  # Ensure dict output
+```
+
+### output_llm_judge
+
+LLM-based evaluation using pydantic-evals:
+
+```python
+from pydantic_ai_guardrails.evals import output_llm_judge
+
+guard = output_llm_judge(
+    rubric='Response should be helpful and polite',
+    model='openai:gpt-4o',
+    threshold=0.7,
+)
+```
+
+## The evaluator_guardrail() Function
+
+Wrap any pydantic-evals evaluator:
+
+```python
+from pydantic_evals.evaluators import Contains
+from pydantic_ai_guardrails.evals import evaluator_guardrail
+
+guard = evaluator_guardrail(
+    Contains(value='Python', case_sensitive=False),
+    kind='output',
+    name='contains_python',
+)
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `evaluator` | `Evaluator` | pydantic-evals evaluator instance |
+| `kind` | `'input' \| 'output'` | Guardrail type |
+| `name` | `str` | Guardrail name |
+| `threshold` | `float` | Score threshold for numeric evaluators |
+| `threshold_mode` | `str` | Comparison mode (see below) |
+
+### Threshold Modes
+
+For numeric evaluators, control when the tripwire triggers:
+
+| Mode | Triggers When | Use Case |
+|------|---------------|----------|
+| `'gte'` | `score >= threshold` passes | Quality scores (higher = better) |
+| `'gt'` | `score > threshold` passes | Strict thresholds |
+| `'lte'` | `score <= threshold` passes | Error rates (lower = better) |
+| `'lt'` | `score < threshold` passes | Strict error limits |
+| `'eq'` | `score == threshold` passes | Exact matching |
+
+```python
+# Score must be >= 0.7 to pass
+guard = evaluator_guardrail(
+    MyScorer(),
+    kind='output',
+    threshold=0.7,
+    threshold_mode='gte',  # Tripwire if score < 0.7
+)
+```
+
+## Custom Evaluators
+
+Wrap your own pydantic-evals evaluators:
+
+```python
+from pydantic_evals.evaluators import Evaluator, EvaluatorContext
+from pydantic_ai_guardrails.evals import evaluator_guardrail
+
+
+class SentimentEvaluator(Evaluator[str, None, None]):
+    """Custom evaluator for sentiment analysis."""
+
+    min_positivity: float = 0.5
+
+    async def evaluate(self, ctx: EvaluatorContext) -> float:
+        # Your sentiment analysis logic
+        from textblob import TextBlob
+        blob = TextBlob(ctx.output)
+        return (blob.sentiment.polarity + 1) / 2  # Normalize to 0-1
+
+
+# Wrap as guardrail
+sentiment_guard = evaluator_guardrail(
+    SentimentEvaluator(min_positivity=0.6),
+    kind='output',
+    name='positive_sentiment',
+    threshold=0.6,
+    threshold_mode='gte',
+)
+```
+
+## Combining with Built-in Guardrails
+
+Layer pydantic-evals with pattern-based guardrails:
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.output import secret_redaction, min_length
+from pydantic_ai_guardrails.evals import output_contains, output_llm_judge
+
+guarded_agent = GuardedAgent(
+    agent,
+    output_guardrails=[
+        # Fast pattern-based checks (run first)
+        secret_redaction(),
+        min_length(min_chars=50),
+
+        # Semantic checks (run after)
+        output_contains('help', case_sensitive=False),
+        output_llm_judge(
+            rubric='Response is professional and on-topic',
+            threshold=0.7,
+        ),
+    ],
+    parallel=True,
+)
+```
+
+## Complete Example
+
+```python
+import asyncio
+from pydantic_ai import Agent
+from pydantic_evals.evaluators import Contains
+
+from pydantic_ai_guardrails import (
+    GuardedAgent,
+    OutputGuardrailViolation,
+)
+from pydantic_ai_guardrails.evals import (
+    evaluator_guardrail,
+    output_contains,
+    output_llm_judge,
+)
+
+
+async def main():
+    agent = Agent(
+        'openai:gpt-4o',
+        system_prompt='You are a helpful Python tutor. Always be encouraging.',
+    )
+
+    guarded_agent = GuardedAgent(
+        agent,
+        output_guardrails=[
+            # Must mention Python
+            output_contains('Python', case_sensitive=False),
+
+            # Must be encouraging (via LLM judge)
+            output_llm_judge(
+                rubric='Response is encouraging and supportive',
+                threshold=0.7,
+            ),
+
+            # Custom evaluator
+            evaluator_guardrail(
+                Contains(value='learn', case_sensitive=False),
+                kind='output',
+                name='mentions_learning',
+            ),
+        ],
+        max_retries=2,
+        on_block='raise',
+    )
+
+    try:
+        result = await guarded_agent.run('How do I get started with Python?')
+        print(f'Response: {result.output}')
+    except OutputGuardrailViolation as e:
+        print(f'Blocked: {e.guardrail_name}')
+        print(f'Reason: {e.result.get("message")}')
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+```
+
+## Type Validation
+
+Use `output_is_instance` for structured outputs:
+
+```python
+from pydantic_ai_guardrails.evals import output_is_instance
+
+# Ensure response is a dict (for JSON mode)
+dict_guard = output_is_instance('dict')
+
+# Ensure response is a list
+list_guard = output_is_instance('list')
+```
+
+## Comparison: pydantic-evals vs Built-in
+
+| Feature | pydantic-evals | Built-in |
+|---------|---------------|----------|
+| Evaluator ecosystem | Large, extensible | Core guardrails |
+| Custom evaluators | Full framework | Function-based |
+| Type checking | IsInstance | JSON validator |
+| LLM judge | Full evaluator | Simplified |
+| Test integration | Dataset-based | GuardrailTestCases |
+
+<Aside type="tip">
+Use pydantic-evals integration when you:
+- Already use pydantic-evals for testing
+- Need the full evaluator framework
+- Want to reuse evaluators as guardrails
+</Aside>
+
+## Next Steps
+
+- [pydantic-evals Documentation](https://ai.pydantic.dev/evals/)
+- [LLM Judge Guide](/guardrails/output/llm-judge/)
+- [Testing](/testing/)

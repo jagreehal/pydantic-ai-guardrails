@@ -1,0 +1,136 @@
+---
+title: Rate Limit
+description: Rate limit requests to prevent abuse
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `rate_limiter` guardrail limits request frequency to prevent abuse and control costs.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.input import rate_limiter
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import rate_limiter
+
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        rate_limiter(max_requests_per_minute=10),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_requests_per_minute` | `int` | Required | Max requests per minute |
+| `key_func` | `Callable` | `None` | Function to extract rate limit key |
+
+## Examples
+
+### Global Rate Limit
+
+```python
+# 20 requests per minute for all users combined
+guardrail = rate_limiter(max_requests_per_minute=20)
+```
+
+### Per-User Rate Limit
+
+```python
+# 10 requests per minute per user
+guardrail = rate_limiter(
+    max_requests_per_minute=10,
+    key_func=lambda ctx: ctx.deps.get('user_id'),
+)
+```
+
+### Per-API-Key Rate Limit
+
+```python
+guardrail = rate_limiter(
+    max_requests_per_minute=100,
+    key_func=lambda ctx: ctx.deps.get('api_key'),
+)
+```
+
+### Per-IP Rate Limit
+
+```python
+guardrail = rate_limiter(
+    max_requests_per_minute=30,
+    key_func=lambda ctx: ctx.deps.get('client_ip'),
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Rate limit exceeded: 10 requests per minute',
+    'severity': 'medium',
+    'metadata': {
+        'limit': 10,
+        'window': 'minute',
+        'key': 'user_123',
+    },
+}
+```
+
+## Use Cases
+
+- **Cost control**: Limit expensive LLM calls
+- **Abuse prevention**: Stop automated attacks
+- **Fair usage**: Ensure resource sharing
+- **API quotas**: Enforce subscription limits
+
+<Aside type="note">
+The built-in rate limiter uses in-memory storage. For distributed applications, implement a custom guardrail with Redis or similar.
+</Aside>
+
+## Distributed Rate Limiting
+
+For multi-instance deployments:
+
+```python
+import redis.asyncio as redis
+from pydantic_ai_guardrails import GuardrailContext, GuardrailResult
+
+class RedisRateLimiter:
+    def __init__(self, redis_url: str, max_rpm: int):
+        self.redis = redis.from_url(redis_url)
+        self.max_rpm = max_rpm
+    
+    async def __call__(self, ctx: GuardrailContext, prompt: str) -> GuardrailResult:
+        user_id = ctx.deps.get('user_id', 'global')
+        key = f'rate_limit:{user_id}'
+        
+        count = await self.redis.incr(key)
+        if count == 1:
+            await self.redis.expire(key, 60)
+        
+        if count > self.max_rpm:
+            return {
+                'tripwire_triggered': True,
+                'message': f'Rate limit exceeded: {self.max_rpm}/min',
+                'severity': 'medium',
+            }
+        
+        return {'tripwire_triggered': False}
+```
+
+## Related
+
+- [Input Guardrails Guide](/guides/input-guardrails/)
+- [Length Limit](/guardrails/input/length-limit/)

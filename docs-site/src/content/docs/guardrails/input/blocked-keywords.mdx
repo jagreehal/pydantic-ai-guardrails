@@ -1,0 +1,114 @@
+---
+title: Blocked Keywords
+description: Block prompts containing specific words or phrases
+---
+
+The `blocked_keywords` guardrail blocks prompts that contain specified words or phrases.
+
+## Import
+
+```python
+from pydantic_ai_guardrails.guardrails.input import blocked_keywords
+```
+
+## Basic Usage
+
+```python
+from pydantic_ai_guardrails import GuardedAgent
+from pydantic_ai_guardrails.guardrails.input import blocked_keywords
+
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        blocked_keywords(keywords=['hack', 'exploit', 'bypass']),
+    ],
+)
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `keywords` | `list[str]` | Required | Words/phrases to block |
+| `case_sensitive` | `bool` | `False` | Match case exactly |
+
+## Examples
+
+### Basic Keyword Blocking
+
+```python
+guardrail = blocked_keywords(
+    keywords=['confidential', 'secret', 'password'],
+)
+```
+
+### Case-Sensitive Matching
+
+```python
+guardrail = blocked_keywords(
+    keywords=['API_KEY', 'SECRET'],
+    case_sensitive=True,
+)
+```
+
+### Phrase Blocking
+
+```python
+guardrail = blocked_keywords(
+    keywords=[
+        'ignore previous instructions',
+        'system prompt',
+        'jailbreak',
+    ],
+)
+```
+
+### Competitor Blocking
+
+```python
+guardrail = blocked_keywords(
+    keywords=['competitor_a', 'competitor_b', 'competitor_c'],
+    case_sensitive=False,
+)
+```
+
+## Violation Result
+
+When triggered, returns:
+
+```python
+{
+    'tripwire_triggered': True,
+    'message': 'Blocked keyword detected: hack',
+    'severity': 'medium',
+    'metadata': {
+        'keywords_found': ['hack'],
+    },
+}
+```
+
+## Use Cases
+
+- **Security**: Block known attack patterns
+- **Brand protection**: Block competitor mentions
+- **Compliance**: Block prohibited terms
+- **Content policy**: Enforce usage guidelines
+
+## Combining with Other Guardrails
+
+```python
+guarded_agent = GuardedAgent(
+    agent,
+    input_guardrails=[
+        # Fast keyword check first
+        blocked_keywords(keywords=['hack', 'exploit']),
+        # Then more expensive checks
+        prompt_injection(),
+    ],
+)
+```
+
+## Related
+
+- [Input Guardrails Guide](/guides/input-guardrails/)
+- [Prompt Injection](/guardrails/input/prompt-injection/)

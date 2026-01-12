@@ -1,0 +1,305 @@
+---
+title: Exceptions Reference
+description: Exception types for guardrail violations
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Exception Hierarchy
+
+```
+AgentRunError (from pydantic-ai)
+└── GuardrailViolation
+    ├── InputGuardrailViolation
+    └── OutputGuardrailViolation
+```
+
+All guardrail exceptions extend Pydantic AI's `AgentRunError`, making them compatible with existing error handling.
+
+## GuardrailViolation
+
+Base exception for all guardrail violations.
+
+```python
+from pydantic_ai_guardrails import GuardrailViolation
+
+class GuardrailViolation(AgentRunError):
+    guardrail_name: str
+    result: GuardrailResult
+    severity: Literal['low', 'medium', 'high', 'critical']
+```
+
+### Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `guardrail_name` | `str` | Name of the violated guardrail |
+| `result` | `GuardrailResult` | Full result with metadata |
+| `severity` | `str` | Violation severity level |
+| `message` | `str` | Human-readable error message |
+
+### Example
+
+```python
+from pydantic_ai_guardrails import GuardrailViolation
+
+try:
+    result = await guarded_agent.run(prompt)
+except GuardrailViolation as e:
+    print(f'Guardrail: {e.guardrail_name}')
+    print(f'Severity: {e.severity}')
+    print(f'Message: {e.result.get("message")}')
+    print(f'Suggestion: {e.result.get("suggestion")}')
+    print(f'Metadata: {e.result.get("metadata")}')
+```
+
+## InputGuardrailViolation
+
+Raised when input validation fails.
+
+```python
+from pydantic_ai_guardrails import InputGuardrailViolation
+
+class InputGuardrailViolation(GuardrailViolation):
+    pass
+```
+
+Input violations occur **before** the agent processes the request, preventing potentially harmful prompts from reaching the model.
+
+### Example
+
+```python
+from pydantic_ai_guardrails import InputGuardrailViolation
+
+try:
+    result = await guarded_agent.run('My email is user@example.com')
+except InputGuardrailViolation as e:
+    if e.severity == 'critical':
+        # Log security event
+        log_security_event(e)
+    
+    # Return safe error to user
+    return {'error': 'Your request could not be processed'}
+```
+
+## OutputGuardrailViolation
+
+Raised when output validation fails after all retries are exhausted.
+
+```python
+from pydantic_ai_guardrails import OutputGuardrailViolation
+
+class OutputGuardrailViolation(GuardrailViolation):
+    retry_count: int
+```
+
+### Additional Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `retry_count` | `int` | Number of retry attempts made |
+
+### Example
+
+```python
+from pydantic_ai_guardrails import OutputGuardrailViolation
+
+try:
+    result = await guarded_agent.run('Tell me a secret')
+except OutputGuardrailViolation as e:
+    print(f'Output blocked: {e.guardrail_name}')
+    print(f'Retries attempted: {e.retry_count}')
+    
+    if e.retry_count > 0:
+        # Auto-retry was attempted but failed
+        log_persistent_violation(e)
+```
+
+## Handling Patterns
+
+### Catch All Violations
+
+```python
+from pydantic_ai_guardrails import GuardrailViolation
+
+try:
+    result = await guarded_agent.run(prompt)
+except GuardrailViolation as e:
+    # Handles both input and output violations
+    handle_violation(e)
+```
+
+### Specific Violation Types
+
+```python
+from pydantic_ai_guardrails import (
+    InputGuardrailViolation,
+    OutputGuardrailViolation,
+)
+
+try:
+    result = await guarded_agent.run(prompt)
+except InputGuardrailViolation as e:
+    # User's input was rejected
+    return {'error': 'Invalid input', 'reason': e.result.get('message')}
+except OutputGuardrailViolation as e:
+    # Model's output was rejected
+    return {'error': 'Could not generate safe response'}
+```
+
+### Severity-Based Handling
+
+```python
+from pydantic_ai_guardrails import GuardrailViolation
+
+try:
+    result = await guarded_agent.run(prompt)
+except GuardrailViolation as e:
+    match e.severity:
+        case 'critical':
+            # Security incident - log and alert
+            alert_security_team(e)
+            block_user(user_id)
+        case 'high':
+            # Log for review
+            log_violation(e)
+        case 'medium' | 'low':
+            # Just log
+            logger.warning(f'Guardrail triggered: {e}')
+```
+
+### Guardrail-Specific Handling
+
+```python
+from pydantic_ai_guardrails import InputGuardrailViolation
+
+try:
+    result = await guarded_agent.run(prompt)
+except InputGuardrailViolation as e:
+    match e.guardrail_name:
+        case 'pii_detector':
+            return {'error': 'Please remove personal information'}
+        case 'prompt_injection':
+            log_security_event(e)
+            return {'error': 'Invalid request'}
+        case 'rate_limit':
+            return {'error': 'Too many requests', 'retry_after': 60}
+        case _:
+            return {'error': 'Request blocked'}
+```
+
+## FastAPI Integration
+
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic_ai_guardrails import (
+    InputGuardrailViolation,
+    OutputGuardrailViolation,
+)
+
+app = FastAPI()
+
+@app.exception_handler(InputGuardrailViolation)
+async def input_violation_handler(request, exc: InputGuardrailViolation):
+    return JSONResponse(
+        status_code=400,
+        content={
+            'error': 'Invalid input',
+            'guardrail': exc.guardrail_name,
+            'message': exc.result.get('message'),
+        },
+    )
+
+@app.exception_handler(OutputGuardrailViolation)
+async def output_violation_handler(request, exc: OutputGuardrailViolation):
+    return JSONResponse(
+        status_code=500,
+        content={
+            'error': 'Could not generate safe response',
+            'retries': exc.retry_count,
+        },
+    )
+```
+
+## Logging Violations
+
+```python
+import logging
+from pydantic_ai_guardrails import GuardrailViolation
+
+logger = logging.getLogger('guardrails')
+
+try:
+    result = await guarded_agent.run(prompt)
+except GuardrailViolation as e:
+    logger.warning(
+        'Guardrail violation',
+        extra={
+            'guardrail': e.guardrail_name,
+            'severity': e.severity,
+            'message': e.result.get('message'),
+            'metadata': e.result.get('metadata'),
+            'retry_count': getattr(e, 'retry_count', 0),
+        },
+    )
+    raise
+```
+
+## Testing Exceptions
+
+```python
+import pytest
+from pydantic_ai_guardrails import (
+    GuardedAgent,
+    InputGuardrailViolation,
+)
+from pydantic_ai_guardrails.guardrails.input import pii_detector
+
+@pytest.mark.asyncio
+async def test_pii_blocked():
+    guarded_agent = GuardedAgent(
+        MockAgent('response'),
+        input_guardrails=[pii_detector()],
+    )
+    
+    with pytest.raises(InputGuardrailViolation) as exc_info:
+        await guarded_agent.run('Email: test@example.com')
+    
+    assert exc_info.value.guardrail_name == 'pii_detector'
+    assert exc_info.value.severity in ('high', 'critical')
+
+
+@pytest.mark.asyncio
+async def test_violation_attributes():
+    # ... setup ...
+    
+    with pytest.raises(InputGuardrailViolation) as exc_info:
+        await guarded_agent.run('bad input')
+    
+    exc = exc_info.value
+    assert exc.guardrail_name
+    assert exc.result['tripwire_triggered'] is True
+    assert exc.result.get('message')
+```
+
+## String Representation
+
+Exceptions have useful string representations:
+
+```python
+try:
+    await guarded_agent.run(prompt)
+except GuardrailViolation as e:
+    print(str(e))
+    # Guardrail "pii_detector" violated: Email address detected in input
+    # Suggestion: Remove personal information before submitting
+    
+    print(repr(e))
+    # InputGuardrailViolation(guardrail_name='pii_detector', severity='high')
+```
+
+## Next Steps
+
+- [API Reference](/reference/api/)
+- [Error Handling Guide](/guides/error-handling/)
+- [Testing](/testing/)

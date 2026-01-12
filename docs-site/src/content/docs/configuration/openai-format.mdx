@@ -1,0 +1,343 @@
+---
+title: OpenAI Guardrails Format
+description: Configuration compatible with OpenAI's guardrail format
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+This library supports a configuration format compatible with [OpenAI's Guardrails](https://platform.openai.com/docs/guides/safety-best-practices) naming conventions, making migration easier.
+
+## Why OpenAI Format?
+
+If you're familiar with OpenAI's guardrail naming or migrating from their format, this provides a familiar interface:
+
+- Same guardrail names (`Contains PII`, `Moderation`, etc.)
+- Same configuration structure
+- Easy migration path
+
+## Format Overview
+
+```json
+{
+  "version": 1,
+  "input": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "Contains PII",
+        "config": {
+          "entities": ["EMAIL_ADDRESS", "PHONE_NUMBER", "US_SSN"],
+          "block": true
+        }
+      },
+      {
+        "name": "Moderation",
+        "config": {
+          "categories": ["hate", "violence", "harassment"]
+        }
+      }
+    ]
+  },
+  "output": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "Contains PII",
+        "config": {
+          "entities": ["EMAIL_ADDRESS", "CREDIT_CARD"],
+          "block": true
+        }
+      }
+    ]
+  }
+}
+```
+
+## Supported Guardrails
+
+### Input Guardrails
+
+| OpenAI Name | Maps To | Description |
+|-------------|---------|-------------|
+| `Contains PII` | `pii_detector` | PII detection |
+| `Moderation` | `toxicity` | Content moderation |
+| `Prompt Injection Detection` | `prompt_injection` | Injection detection |
+| `Jailbreak` | `prompt_injection` | Jailbreak attempts |
+| `Length Limit` | `length_limit` | Input length |
+
+### Output Guardrails
+
+| OpenAI Name | Maps To | Description |
+|-------------|---------|-------------|
+| `Contains PII` | `pii_detector` | PII in output |
+| `Hallucination Detection` | `llm_judge` | Factual accuracy |
+| `NSFW Text` | `toxicity` | Adult content |
+| `Secret Detection` | `secret_redaction` | Secrets in output |
+
+## Loading OpenAI Format
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import create_guarded_agent_from_config
+
+# Automatically detects OpenAI format
+guarded_agent = create_guarded_agent_from_config(
+    Agent('openai:gpt-4o'),
+    'openai_guardrails.json',
+)
+```
+
+## Configuration Mapping
+
+### Contains PII
+
+**OpenAI Format:**
+```json
+{
+  "name": "Contains PII",
+  "config": {
+    "entities": ["EMAIL_ADDRESS", "PHONE_NUMBER", "US_SSN", "CREDIT_CARD"],
+    "block": true
+  }
+}
+```
+
+**Maps to:**
+```python
+pii_detector(
+    detect_types=['email', 'phone', 'ssn', 'credit_card'],
+)
+```
+
+**Entity Mapping:**
+
+| OpenAI Entity | Library Entity |
+|---------------|----------------|
+| `EMAIL_ADDRESS` | `email` |
+| `PHONE_NUMBER` | `phone` |
+| `US_SSN` | `ssn` |
+| `CREDIT_CARD` | `credit_card` |
+| `IP_ADDRESS` | `ip_address` |
+
+### Moderation
+
+**OpenAI Format:**
+```json
+{
+  "name": "Moderation",
+  "config": {
+    "categories": ["hate", "hate/threatening", "harassment", "violence"]
+  }
+}
+```
+
+**Maps to:**
+```python
+toxicity(threshold=0.5)
+```
+
+<Aside type="note">
+Category-specific thresholds are normalized to a single toxicity threshold. For fine-grained control, use the native format.
+</Aside>
+
+### Prompt Injection Detection
+
+**OpenAI Format:**
+```json
+{
+  "name": "Prompt Injection Detection",
+  "config": {
+    "confidence_threshold": 0.7
+  }
+}
+```
+
+**Maps to:**
+```python
+prompt_injection(threshold=0.7)
+```
+
+### Jailbreak
+
+**OpenAI Format:**
+```json
+{
+  "name": "Jailbreak",
+  "config": {
+    "confidence_threshold": 0.8
+  }
+}
+```
+
+**Maps to:**
+```python
+prompt_injection(threshold=0.8)  # Handled by same detector
+```
+
+### Hallucination Detection
+
+**OpenAI Format:**
+```json
+{
+  "name": "Hallucination Detection",
+  "config": {}
+}
+```
+
+**Maps to:**
+```python
+llm_judge(rubric='Response should be factually accurate')
+```
+
+## Complete OpenAI-Compatible Config
+
+```json
+{
+  "version": 1,
+  "input": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "Contains PII",
+        "config": {
+          "entities": [
+            "EMAIL_ADDRESS",
+            "PHONE_NUMBER",
+            "US_SSN",
+            "CREDIT_CARD",
+            "IP_ADDRESS"
+          ],
+          "block": true
+        }
+      },
+      {
+        "name": "Moderation",
+        "config": {
+          "categories": [
+            "hate",
+            "hate/threatening",
+            "harassment",
+            "harassment/threatening",
+            "violence",
+            "violence/graphic"
+          ]
+        }
+      },
+      {
+        "name": "Prompt Injection Detection",
+        "config": {
+          "confidence_threshold": 0.7
+        }
+      },
+      {
+        "name": "Jailbreak",
+        "config": {
+          "confidence_threshold": 0.8
+        }
+      }
+    ]
+  },
+  "output": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "Contains PII",
+        "config": {
+          "entities": ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD"],
+          "block": true
+        }
+      },
+      {
+        "name": "Hallucination Detection",
+        "config": {}
+      },
+      {
+        "name": "NSFW Text",
+        "config": {
+          "confidence_threshold": 0.7
+        }
+      }
+    ]
+  }
+}
+```
+
+## Migration Guide
+
+### From OpenAI Guardrails
+
+<Steps>
+
+1. **Export your OpenAI config**
+   
+   Save your existing OpenAI guardrail configuration to a JSON file.
+
+2. **Verify guardrail mapping**
+   
+   Check that all your guardrails have mappings (see tables above).
+
+3. **Load with pydantic-ai-guardrails**
+   
+   ```python
+   from pydantic_ai_guardrails import create_guarded_agent_from_config
+   
+   guarded_agent = create_guarded_agent_from_config(
+       agent, 'openai_guardrails.json'
+   )
+   ```
+
+4. **Test behavior**
+   
+   Run your existing test cases to verify equivalent behavior.
+
+5. **Optionally migrate to native format**
+   
+   For more control, convert to the native format over time.
+
+</Steps>
+
+### Converting to Native Format
+
+If you want more control, convert OpenAI format to native:
+
+**OpenAI:**
+```json
+{
+  "name": "Contains PII",
+  "config": {
+    "entities": ["EMAIL_ADDRESS", "PHONE_NUMBER"],
+    "block": true
+  }
+}
+```
+
+**Native:**
+```json
+{
+  "name": "pii_detector",
+  "config": {
+    "detect_types": ["email", "phone"],
+    "action": "block"
+  }
+}
+```
+
+## Limitations
+
+Some OpenAI features don't have direct mappings:
+
+| OpenAI Feature | Status | Alternative |
+|----------------|--------|-------------|
+| Custom regex in PII | Partial | Use `blocked_keywords` |
+| Per-category moderation | Partial | Single toxicity threshold |
+| Real-time moderation API | No | Local models only |
+
+<Aside type="tip">
+The native format offers more flexibility. Consider migrating once you're comfortable with the library.
+</Aside>
+
+## Next Steps
+
+- [JSON/YAML Configuration](/configuration/json-yaml/)
+- [PII Detector](/guardrails/input/pii-detector/)
+- [Toxicity](/guardrails/input/toxicity/)
