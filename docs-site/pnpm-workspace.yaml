@@ -1,0 +1,5 @@
+# pnpm 10 reads package settings from here, not package.json.
+# Allow these dependencies to run their (native) build scripts during install.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
