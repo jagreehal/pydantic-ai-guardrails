@@ -1,0 +1,878 @@
+{
+  "schemaVersion": 1,
+  "testCases": [
+    {
+      "status": "pass",
+      "externalId": "tests/test_config.py::test_registry_includes_built_ins",
+      "title": "test_registry_includes_built_ins",
+      "durationMs": 0.45,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_config.py",
+      "sourceLine": 20
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_config.py::test_build_guardrails_from_dict",
+      "title": "test_build_guardrails_from_dict",
+      "durationMs": 1.14,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_config.py",
+      "sourceLine": 27
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_config.py::test_build_guardrails_unknown_type",
+      "title": "test_build_guardrails_unknown_type",
+      "durationMs": 1.49,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_config.py",
+      "sourceLine": 41
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_config.py::test_build_guardrails_missing_type",
+      "title": "test_build_guardrails_missing_type",
+      "durationMs": 1.19,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_config.py",
+      "sourceLine": 46
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_config.py::test_unsupported_version",
+      "title": "test_unsupported_version",
+      "durationMs": 19.44,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_config.py",
+      "sourceLine": 51
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_config.py::test_load_config_json",
+      "title": "test_load_config_json",
+      "durationMs": 5.01,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_config.py",
+      "sourceLine": 56
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_config.py::test_load_config_missing_file",
+      "title": "test_load_config_missing_file",
+      "durationMs": 0.43,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_config.py",
+      "sourceLine": 67
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestContextBuilders::test_build_input_context_basic",
+      "title": "test_build_input_context_basic",
+      "durationMs": 0.44,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 28
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestContextBuilders::test_build_output_context_basic",
+      "title": "test_build_output_context_basic",
+      "durationMs": 0.36,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 33
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestConversion::test_evaluator_passed_bool",
+      "title": "test_evaluator_passed_bool",
+      "durationMs": 0.25,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 39
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestConversion::test_evaluator_passed_score",
+      "title": "test_evaluator_passed_score",
+      "durationMs": 0.32,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 45
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestEvaluatorGuardrail::test_output_contains_passes",
+      "title": "test_output_contains_passes",
+      "durationMs": 18.87,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 51
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestEvaluatorGuardrail::test_output_contains_blocks",
+      "title": "test_output_contains_blocks",
+      "durationMs": 10.96,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 57
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestEvaluatorGuardrail::test_input_guardrail_blocks",
+      "title": "test_input_guardrail_blocks",
+      "durationMs": 6.41,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 63
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_evals.py::TestEvaluatorGuardrail::test_custom_evaluator",
+      "title": "test_custom_evaluator",
+      "durationMs": 18.46,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_evals.py",
+      "sourceLine": 71
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_custom_input_guardrail_passes",
+      "title": "test_custom_input_guardrail_passes",
+      "durationMs": 11.52,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 28
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_custom_input_guardrail_blocks",
+      "title": "test_custom_input_guardrail_blocks",
+      "durationMs": 6.7,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 33
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_custom_input_guardrail_reason_string",
+      "title": "test_custom_input_guardrail_reason_string",
+      "durationMs": 6.5,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 39
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_warn_mode_continues",
+      "title": "test_warn_mode_continues",
+      "durationMs": 11.07,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 46
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_context_guard_receives_ctx",
+      "title": "test_context_guard_receives_ctx",
+      "durationMs": 10.52,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 54
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_input_guardrail_requires_a_check",
+      "title": "test_input_guardrail_requires_a_check",
+      "durationMs": 0.4,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 66
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_detect_pii[my ssn is 123-45-6789-True]",
+      "title": "test_detect_pii[my ssn is 123-45-6789-True]",
+      "durationMs": 7.47,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 73
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_detect_pii[email me at a@b.com-True]",
+      "title": "test_detect_pii[email me at a@b.com-True]",
+      "durationMs": 7.34,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 73
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_detect_pii[just a normal sentence-False]",
+      "title": "test_detect_pii[just a normal sentence-False]",
+      "durationMs": 11.25,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 73
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_detect_pii_specific_types",
+      "title": "test_detect_pii_specific_types",
+      "durationMs": 13.73,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 90
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_detect_prompt_injection",
+      "title": "test_detect_prompt_injection",
+      "durationMs": 52.55,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 98
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_detect_prompt_injection_low_sensitivity_allows_roleplay",
+      "title": "test_detect_prompt_injection_low_sensitivity_allows_roleplay",
+      "durationMs": 9.57,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 104
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_detect_toxicity",
+      "title": "test_detect_toxicity",
+      "durationMs": 21.26,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 109
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_block_keywords",
+      "title": "test_block_keywords",
+      "durationMs": 13.84,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 115
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_block_keywords_whole_words",
+      "title": "test_block_keywords_whole_words",
+      "durationMs": 13.08,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 122
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_block_keywords_requires_keywords",
+      "title": "test_block_keywords_requires_keywords",
+      "durationMs": 0.29,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 129
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_limit_input_length_chars",
+      "title": "test_limit_input_length_chars",
+      "durationMs": 12.4,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 134
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_limit_input_length_requires_a_bound",
+      "title": "test_limit_input_length_requires_a_bound",
+      "durationMs": 0.36,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 141
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_rate_limit",
+      "title": "test_rate_limit",
+      "durationMs": 18.47,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 146
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_rate_limit_per_key",
+      "title": "test_rate_limit_per_key",
+      "durationMs": 60.08,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 155
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_input.py::test_rate_limit_requires_positive_max",
+      "title": "test_rate_limit_requires_positive_max",
+      "durationMs": 0.31,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_input.py",
+      "sourceLine": 163
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_custom_output_guardrail_passes",
+      "title": "test_custom_output_guardrail_passes",
+      "durationMs": 9.76,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 30
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_custom_output_guardrail_raise",
+      "title": "test_custom_output_guardrail_raise",
+      "durationMs": 10.1,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 35
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_output_retry_exhausts_to_model_error",
+      "title": "test_output_retry_exhausts_to_model_error",
+      "durationMs": 11.18,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 41
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_output_warn_continues",
+      "title": "test_output_warn_continues",
+      "durationMs": 8.66,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 55
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_limit_output_length_min",
+      "title": "test_limit_output_length_min",
+      "durationMs": 11.92,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 62
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_limit_output_length_max",
+      "title": "test_limit_output_length_max",
+      "durationMs": 10.09,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 68
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_limit_output_length_requires_bound",
+      "title": "test_limit_output_length_requires_bound",
+      "durationMs": 0.37,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 74
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_redact_secrets_rewrites_output",
+      "title": "test_redact_secrets_rewrites_output",
+      "durationMs": 14.81,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 79
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_redact_secrets_leaves_clean_output",
+      "title": "test_redact_secrets_leaves_clean_output",
+      "durationMs": 10.07,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 87
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_validate_json_blocks_invalid",
+      "title": "test_validate_json_blocks_invalid",
+      "durationMs": 40.62,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 92
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_validate_json_allows_valid",
+      "title": "test_validate_json_allows_valid",
+      "durationMs": 16.91,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 98
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_validate_json_required_keys",
+      "title": "test_validate_json_required_keys",
+      "durationMs": 9.18,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 103
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_filter_toxicity",
+      "title": "test_filter_toxicity",
+      "durationMs": 12.01,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 109
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_detect_hallucination",
+      "title": "test_detect_hallucination",
+      "durationMs": 26.5,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 115
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_match_regex_requires_match",
+      "title": "test_match_regex_requires_match",
+      "durationMs": 10.22,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 121
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_match_regex_passes",
+      "title": "test_match_regex_passes",
+      "durationMs": 9.46,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 127
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_match_regex_requires_pattern",
+      "title": "test_match_regex_requires_pattern",
+      "durationMs": 0.31,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 132
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_block_refusals",
+      "title": "test_block_refusals",
+      "durationMs": 26.27,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 137
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_require_tool_use_no_tools_called",
+      "title": "test_require_tool_use_no_tools_called",
+      "durationMs": 10.44,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 143
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_output.py::test_require_tool_use_satisfied",
+      "title": "test_require_tool_use_satisfied",
+      "durationMs": 16.24,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_output.py",
+      "sourceLine": 149
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsSchemaValidator::test_valid_args_pass",
+      "title": "test_valid_args_pass",
+      "durationMs": 3.34,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 43
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsSchemaValidator::test_valid_args_with_defaults",
+      "title": "test_valid_args_with_defaults",
+      "durationMs": 0.24,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 47
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsSchemaValidator::test_invalid_pattern_raises_model_retry",
+      "title": "test_invalid_pattern_raises_model_retry",
+      "durationMs": 1.82,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 51
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsSchemaValidator::test_missing_required_field_raises_model_retry",
+      "title": "test_missing_required_field_raises_model_retry",
+      "durationMs": 0.41,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 56
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsSchemaValidator::test_max_length_violation_raises_model_retry",
+      "title": "test_max_length_violation_raises_model_retry",
+      "durationMs": 0.37,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 61
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsSchemaValidator::test_multiple_errors_combined",
+      "title": "test_multiple_errors_combined",
+      "durationMs": 0.49,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 66
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsSchemaValidator::test_error_message_includes_field_details",
+      "title": "test_error_message_includes_field_details",
+      "durationMs": 0.84,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 71
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsCustomValidator::test_none_return_passes",
+      "title": "test_none_return_passes",
+      "durationMs": 0.22,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 81
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsCustomValidator::test_error_string_raises_model_retry",
+      "title": "test_error_string_raises_model_retry",
+      "durationMs": 1.53,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 88
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsCustomValidator::test_receives_kwargs_as_dict",
+      "title": "test_receives_kwargs_as_dict",
+      "durationMs": 0.22,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 98
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsCustomValidator::test_validator_exception_propagates",
+      "title": "test_validator_exception_propagates",
+      "durationMs": 1.11,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 109
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsAllowlistValidator::test_allowed_values_pass",
+      "title": "test_allowed_values_pass",
+      "durationMs": 0.24,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 122
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsAllowlistValidator::test_disallowed_value_raises_model_retry",
+      "title": "test_disallowed_value_raises_model_retry",
+      "durationMs": 1.07,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 128
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsAllowlistValidator::test_unchecked_params_pass_through",
+      "title": "test_unchecked_params_pass_through",
+      "durationMs": 0.4,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 135
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsAllowlistValidator::test_multiple_violations_combined",
+      "title": "test_multiple_violations_combined",
+      "durationMs": 1.16,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 142
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsAllowlistValidator::test_empty_allowlist_blocks_all_values",
+      "title": "test_empty_allowlist_blocks_all_values",
+      "durationMs": 0.37,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 154
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsAllowlistValidator::test_error_includes_allowed_values",
+      "title": "test_error_includes_allowed_values",
+      "durationMs": 1.22,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 159
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestArgsAllowlistValidator::test_param_not_provided_is_ignored",
+      "title": "test_param_not_provided_is_ignored",
+      "durationMs": 0.21,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 166
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tool_validators.py::TestImports::test_importable_from_package",
+      "title": "test_importable_from_package",
+      "durationMs": 0.23,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tool_validators.py",
+      "sourceLine": 178
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_restrict_tools_hides_blocked_tool",
+      "title": "test_restrict_tools_hides_blocked_tool",
+      "durationMs": 15.42,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 23
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_restrict_tools_approval_denied_raises_model_retry",
+      "title": "test_restrict_tools_approval_denied_raises_model_retry",
+      "durationMs": 13.21,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 39
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_restrict_tools_approval_without_callback",
+      "title": "test_restrict_tools_approval_without_callback",
+      "durationMs": 11.86,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 59
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_validate_tool_args_rejects_bad_args",
+      "title": "test_validate_tool_args_rejects_bad_args",
+      "durationMs": 21.72,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 70
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_validate_tool_args_requires_check",
+      "title": "test_validate_tool_args_requires_check",
+      "durationMs": 0.46,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 85
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_limit_cost_requires_a_budget",
+      "title": "test_limit_cost_requires_a_budget",
+      "durationMs": 0.31,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 90
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_limit_cost_allows_within_budget",
+      "title": "test_limit_cost_allows_within_budget",
+      "durationMs": 10.91,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 95
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_async_guardrail_blocking_fails",
+      "title": "test_async_guardrail_blocking_fails",
+      "durationMs": 9.44,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 100
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_async_guardrail_blocking_passes",
+      "title": "test_async_guardrail_blocking_passes",
+      "durationMs": 10.4,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 109
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_async_guardrail_concurrent_fail",
+      "title": "test_async_guardrail_concurrent_fail",
+      "durationMs": 10.78,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 120
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_async_guardrail_monitoring_never_blocks",
+      "title": "test_async_guardrail_monitoring_never_blocks",
+      "durationMs": 10.31,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 129
+    },
+    {
+      "status": "pass",
+      "externalId": "tests/test_tools_cost_async.py::test_async_guardrail_requires_guard",
+      "title": "test_async_guardrail_requires_guard",
+      "durationMs": 0.33,
+      "retry": 0,
+      "retries": 0,
+      "sourceFile": "/Users/jreehal/dev/python/pydantic-ai-guardrails/tests/test_tools_cost_async.py",
+      "sourceLine": 140
+    }
+  ],
+  "projectRoot": "/Users/jreehal/dev/python/pydantic-ai-guardrails",
+  "startedAtMs": 1782805591109.19,
+  "finishedAtMs": 1782805593709.78
+}
