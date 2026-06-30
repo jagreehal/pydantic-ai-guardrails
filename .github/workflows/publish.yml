@@ -12,10 +12,19 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     # Publish only for a real release, or a manual re-run pinned to a v* tag.
-    # This stops workflow_dispatch from uploading to PyPI off an arbitrary branch.
+    # This stops workflow_dispatch from publishing off an arbitrary branch.
     if: >-
       github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v'))
+
+    # Trusted Publishing (OIDC): no long-lived PyPI token. The id-token
+    # permission lets PyPI verify this workflow via the `pypi` environment.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pydantic-ai-guardrails
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -25,14 +34,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install build tools
-        run: pip install build twine
-
       - name: Build package
-        run: python -m build
+        run: |
+          pip install build
+          python -m build
 
       - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
