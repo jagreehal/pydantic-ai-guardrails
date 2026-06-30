@@ -29,18 +29,55 @@ from typing import Any
 
 from pydantic_ai.capabilities import AbstractCapability
 
-from pydantic_ai_guardrails import _async, _cost, _input, _output, _tool
+from pydantic_ai_guardrails._cost import LimitCost
+from pydantic_ai_guardrails._input import (
+    BlockKeywords,
+    DetectPII,
+    DetectPromptInjection,
+    DetectToxicity,
+    LimitInputLength,
+    RateLimit,
+)
+from pydantic_ai_guardrails._output import (
+    BlockRefusals,
+    DetectHallucination,
+    FilterToxicity,
+    LimitOutputLength,
+    LlmJudge,
+    MatchRegex,
+    RedactSecrets,
+    RequireToolUse,
+    ValidateJson,
+)
+from pydantic_ai_guardrails._tool import RestrictTools
 
 __all__ = ('GuardrailConfig', 'load_config', 'build_guardrails', 'REGISTRY')
 
+_GUARDRAILS: tuple[type[AbstractCapability[Any]], ...] = (
+    # Input
+    DetectPII,
+    DetectPromptInjection,
+    DetectToxicity,
+    BlockKeywords,
+    LimitInputLength,
+    RateLimit,
+    # Output
+    LimitOutputLength,
+    RedactSecrets,
+    ValidateJson,
+    FilterToxicity,
+    DetectHallucination,
+    MatchRegex,
+    BlockRefusals,
+    RequireToolUse,
+    LlmJudge,
+    # Tool and cost
+    RestrictTools,
+    LimitCost,
+)
+
 #: Maps a config ``type`` to the capability class that implements it.
-REGISTRY: dict[str, type[AbstractCapability[Any]]] = {
-    name: getattr(module, name)
-    for module in (_input, _output, _tool, _cost, _async)
-    for name in module.__all__
-    if isinstance(getattr(module, name), type)
-    and issubclass(getattr(module, name), AbstractCapability)
-}
+REGISTRY: dict[str, type[AbstractCapability[Any]]] = {cls.__name__: cls for cls in _GUARDRAILS}
 
 
 @dataclass
