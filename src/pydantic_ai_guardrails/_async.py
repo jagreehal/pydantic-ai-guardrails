@@ -9,12 +9,11 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import ModelRequestContext
 from pydantic_ai.tools import RunContext
 
-from pydantic_ai_guardrails._base import normalize_check_result
+from pydantic_ai_guardrails._base import GuardrailCapability, normalize_check_result
 from pydantic_ai_guardrails._exceptions import GuardrailFailed
 from pydantic_ai_guardrails._types import AsyncGuardFunc, GuardrailMode
 
@@ -26,7 +25,7 @@ _Handler = Callable[[ModelRequestContext], Awaitable[ModelResponse]]
 
 
 @dataclass
-class AsyncGuardrail(AbstractCapability[Any]):
+class AsyncGuardrail(GuardrailCapability):
     """Run an async guard against the message history around each model request.
 
     - ``'concurrent'`` (default): the guard and the model run together; if the
@@ -44,14 +43,6 @@ class AsyncGuardrail(AbstractCapability[Any]):
     def __post_init__(self) -> None:
         if self.guard is None:
             raise ValueError('AsyncGuardrail needs a guard function')
-
-    @classmethod
-    def get_serialization_name(cls) -> str | None:
-        return None
-
-    @property
-    def name(self) -> str:
-        return type(self).__name__
 
     async def _evaluate(self, ctx: RunContext[Any], messages: list[ModelMessage]) -> str | None:
         assert self.guard is not None

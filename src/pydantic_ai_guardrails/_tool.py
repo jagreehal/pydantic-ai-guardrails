@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.exceptions import ModelRetry
 from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.tools import RunContext, ToolDefinition
 
+from pydantic_ai_guardrails._base import GuardrailCapability
 from pydantic_ai_guardrails._exceptions import ToolDenied
 from pydantic_ai_guardrails._types import ApprovalFunc
+from pydantic_ai_guardrails._utils import maybe_await
 
 __all__ = ('RestrictTools', 'ValidateToolArgs', 'ToolArgsCheck')
 
@@ -21,14 +21,8 @@ __all__ = ('RestrictTools', 'ValidateToolArgs', 'ToolArgsCheck')
 ToolArgsCheck = Callable[[str, dict[str, Any]], 'str | None | Awaitable[str | None]']
 
 
-async def _maybe_await(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
 @dataclass
-class RestrictTools(AbstractCapability[Any]):
+class RestrictTools(GuardrailCapability):
     """Block tools outright or require approval before they run.
 
     Blocked tools are hidden from the model (removed in ``prepare_tools``).
@@ -46,10 +40,6 @@ class RestrictTools(AbstractCapability[Any]):
     blocked: list[str] = field(default_factory=list)
     require_approval: list[str] = field(default_factory=list)
     approval: ApprovalFunc | None = None
-
-    @classmethod
-    def get_serialization_name(cls) -> str | None:
-        return None
 
     async def prepare_tools(
         self,
@@ -75,14 +65,14 @@ class RestrictTools(AbstractCapability[Any]):
             return args
         if self.approval is None:
             raise ToolDenied(call.tool_name, reason='approval required but no approval callback configured')
-        approved = await _maybe_await(self.approval(call.tool_name, args))
+        approved = await maybe_await(self.approval(call.tool_name, args))
         if not approved:
             raise ModelRetry(f'tool {call.tool_name!r} was not approved; try a different approach')
         return args
 
 
 @dataclass
-class ValidateToolArgs(AbstractCapability[Any]):
+class ValidateToolArgs(GuardrailCapability):
     """Validate tool arguments before execution, across one or all tools.
 
     ``check(tool_name, args)`` returns a reason string to reject (raising
@@ -100,10 +90,6 @@ class ValidateToolArgs(AbstractCapability[Any]):
         if self.check is None:
             raise ValueError('ValidateToolArgs needs a check function')
 
-    @classmethod
-    def get_serialization_name(cls) -> str | None:
-        return None
-
     async def before_tool_execute(
         self,
         ctx: RunContext[Any],
@@ -115,7 +101,7 @@ class ValidateToolArgs(AbstractCapability[Any]):
         if self.tools is not None and call.tool_name not in self.tools:
             return args
         assert self.check is not None
-        reason = await _maybe_await(self.check(call.tool_name, args))
+        reason = await maybe_await(self.check(call.tool_name, args))
         if reason is not None:
             raise ModelRetry(reason)
         return args

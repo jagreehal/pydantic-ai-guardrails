@@ -5,17 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.models import ModelRequestContext
 from pydantic_ai.tools import RunContext
 
+from pydantic_ai_guardrails._base import GuardrailCapability
 from pydantic_ai_guardrails._exceptions import BudgetExceeded
 
 __all__ = ('LimitCost',)
 
 
 @dataclass
-class LimitCost(AbstractCapability[Any]):
+class LimitCost(GuardrailCapability):
     """Abort the run if cumulative token usage exceeds a budget.
 
     Checked before every model request, so a multi-step agent is stopped as soon
@@ -33,10 +33,6 @@ class LimitCost(AbstractCapability[Any]):
     def __post_init__(self) -> None:
         if all(v is None for v in (self.max_input_tokens, self.max_output_tokens, self.max_total_tokens)):
             raise ValueError('LimitCost needs at least one token budget')
-
-    @classmethod
-    def get_serialization_name(cls) -> str | None:
-        return None
 
     async def before_model_request(
         self,

@@ -13,7 +13,6 @@ so the model can rewrite a failing response.
 
 from __future__ import annotations
 
-import inspect
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -31,10 +30,12 @@ from pydantic_ai_guardrails._types import (
     OutputCheckFunc,
     OutputContextCheckFunc,
 )
+from pydantic_ai_guardrails._utils import maybe_await
 
 logger = logging.getLogger('pydantic_ai_guardrails')
 
 __all__ = (
+    'GuardrailCapability',
     'InputGuardrailBase',
     'OutputGuardrailBase',
     'InputGuardrail',
@@ -43,10 +44,21 @@ __all__ = (
 )
 
 
-async def _maybe_await(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
+class GuardrailCapability(AbstractCapability[Any]):
+    """Shared base for every guardrail in this package.
+
+    Guardrails are not part of pydantic-ai's serializable capability specs, so
+    they opt out of a serialization name. ``name`` is used in log messages and
+    on raised errors; a guardrail may expose a ``label`` attribute to override it.
+    """
+
+    @classmethod
+    def get_serialization_name(cls) -> str | None:
+        return None
+
+    @property
+    def name(self) -> str:
+        return getattr(self, 'label', None) or type(self).__name__
 
 
 def normalize_check_result(result: Any, *, default_reason: str) -> str | None:
@@ -68,21 +80,13 @@ def normalize_check_result(result: Any, *, default_reason: str) -> str | None:
     return None if result else default_reason
 
 
-class InputGuardrailBase(AbstractCapability[Any]):
+class InputGuardrailBase(GuardrailCapability):
     """Base for guardrails that validate the user prompt before the run starts.
 
     Subclasses implement :meth:`check` and declare an ``on_fail`` field.
     """
 
     on_fail: OnInputFail = 'raise'
-
-    @classmethod
-    def get_serialization_name(cls) -> str | None:
-        return None
-
-    @property
-    def name(self) -> str:
-        return getattr(self, 'label', None) or type(self).__name__
 
     async def check(self, ctx: RunContext[Any], text: str) -> str | None:
         """Return a violation reason, or ``None`` if the input is allowed."""
@@ -103,7 +107,7 @@ class InputGuardrailBase(AbstractCapability[Any]):
         raise InputBlocked(message, guardrail=self.name, reason=reason)
 
 
-class OutputGuardrailBase(AbstractCapability[Any]):
+class OutputGuardrailBase(GuardrailCapability):
     """Base for guardrails that validate model output after the run produces it.
 
     Subclasses implement :meth:`check` (to block/retry) and/or :meth:`transform`
@@ -112,14 +116,6 @@ class OutputGuardrailBase(AbstractCapability[Any]):
     """
 
     on_fail: OnOutputFail = 'retry'
-
-    @classmethod
-    def get_serialization_name(cls) -> str | None:
-        return None
-
-    @property
-    def name(self) -> str:
-        return getattr(self, 'label', None) or type(self).__name__
 
     async def check(self, ctx: RunContext[Any], output: Any, text: str) -> str | None:
         """Return a violation reason, or ``None`` if the output is allowed."""
@@ -192,10 +188,10 @@ class InputGuardrail(InputGuardrailBase):
 
     async def check(self, ctx: RunContext[Any], text: str) -> str | None:
         if self.context_guard is not None:
-            result = await _maybe_await(self.context_guard(ctx, text))
+            result = await maybe_await(self.context_guard(ctx, text))
         else:
             assert self.guard is not None
-            result = await _maybe_await(self.guard(text))
+            result = await maybe_await(self.guard(text))
         return normalize_check_result(result, default_reason='input blocked')
 
 
@@ -231,8 +227,8 @@ class OutputGuardrail(OutputGuardrailBase):
 
     async def check(self, ctx: RunContext[Any], output: Any, text: str) -> str | None:
         if self.context_guard is not None:
-            result = await _maybe_await(self.context_guard(ctx, output))
+            result = await maybe_await(self.context_guard(ctx, output))
         else:
             assert self.guard is not None
-            result = await _maybe_await(self.guard(output))
+            result = await maybe_await(self.guard(output))
         return normalize_check_result(result, default_reason='output blocked')
