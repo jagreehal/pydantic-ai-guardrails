@@ -1,7 +1,7 @@
 """
 examples/autoevals/autoevals_moderation.py
 
-Use autoevals Moderation and Security evaluators for safety.
+Use autoevals Moderation and Security evaluators as output guardrails.
 
 Installation:
     pip install pydantic-ai-guardrails autoevals
@@ -11,130 +11,62 @@ Usage:
 """
 
 import asyncio
+import sys
+from pathlib import Path
 
-from pydantic_ai_guardrails import GuardrailResult, OutputGuardrail
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-
-def autoevals_evaluator_guardrail(
-    evaluator_class,
-    threshold: float = 0.5,
-    name: str | None = None,
-    **evaluator_kwargs
-) -> OutputGuardrail:
-    """
-    Generic wrapper for autoevals evaluators as output guardrails.
-
-    Args:
-        evaluator_class: autoevals evaluator class (e.g., Moderation, Security)
-        threshold: Minimum score to pass (or maximum for inverse checks)
-        name: Display name
-        **evaluator_kwargs: Arguments passed to evaluator constructor
-
-    Returns:
-        OutputGuardrail wrapping the evaluator
-    """
-    evaluator = evaluator_class(**evaluator_kwargs)
-    guard_name = name or evaluator_class.__name__
-
-    async def _validate(output: str, *, input_context: str | None = None) -> GuardrailResult:
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            evaluator,
-            output,
-            None,  # expected (not used for moderation/security)
-            input_context
-        )
-
-        # For moderation/security, LOW scores are good (pass)
-        # HIGH scores indicate problems (fail)
-        if result.score > threshold:
-            return {
-                'tripwire_triggered': True,
-                'message': f"{guard_name} detected issue (score: {result.score:.2f})",
-                'severity': 'high',
-                'suggestion': (
-                    f"Content flagged by {guard_name}. Score: {result.score:.2f}. "
-                    f"Reasoning: {result.metadata.get('rationale', 'N/A')}"
-                ),
-                'metadata': {
-                    'score': result.score,
-                    'reasoning': result.metadata.get('rationale'),
-                    'evaluator': f'autoevals.{guard_name}'
-                }
-            }
-
-        return {'tripwire_triggered': False}
-
-    return OutputGuardrail(
-        _validate,
-        name=f"autoevals.{guard_name}",
-        description=f"{guard_name} evaluation (threshold: {threshold})"
-    )
+from examples._utils import agent_with_guardrails
 
 
-async def main():
-    """Demo of autoevals Moderation and Security guardrails."""
+async def main() -> None:
     try:
         from autoevals.llm import Moderation, Security
         from pydantic_ai import Agent
-
-        from pydantic_ai_guardrails import GuardedAgent
+        from pydantic_ai_guardrails.evals import evaluator_guardrail
     except ImportError as e:
-        print(f"❌ Missing dependency: {e}")
-        print("\nInstall with: pip install pydantic-ai pydantic-ai-guardrails autoevals")
+        print(f'❌ Missing dependency: {e}')
+        print('\nInstall with: pip install pydantic-ai pydantic-ai-guardrails autoevals')
         return
 
-    print("=" * 70)
-    print("AUTOEVALS MODERATION & SECURITY DEMO")
-    print("=" * 70)
+    print('=' * 70)
+    print('AUTOEVALS MODERATION & SECURITY DEMO')
+    print('=' * 70)
 
-    agent = Agent('openai:gpt-4', system_prompt="You are a helpful chatbot.")
-
-    guarded_agent = GuardedAgent(
-        agent,
+    guarded_agent = agent_with_guardrails(
+        Agent('openai:gpt-4', system_prompt='You are a helpful chatbot.'),
         output_guardrails=[
-            # Flag harmful content
-            autoevals_evaluator_guardrail(
-                Moderation,
+            evaluator_guardrail(
+                Moderation(model='gpt-4-turbo-preview'),
+                kind='output',
                 threshold=0.5,
-                model="gpt-4-turbo-preview"
+                threshold_mode='lte',
             ),
-
-            # Flag security issues
-            autoevals_evaluator_guardrail(
-                Security,
+            evaluator_guardrail(
+                Security(model='gpt-4-turbo-preview'),
+                kind='output',
                 threshold=0.5,
-                model="gpt-4-turbo-preview"
+                threshold_mode='lte',
             ),
         ],
-        max_retries=2
     )
 
     test_queries = [
-        {
-            "query": "How do I bake a cake?",
-            "description": "Safe query (should pass)"
-        },
-        {
-            "query": "How do I hack a system?",
-            "description": "Security risk (may fail)"
-        },
+        ('How do I bake a cake?', 'Safe query'),
+        ('How do I hack a system?', 'Security risk'),
     ]
 
-    for i, test in enumerate(test_queries, 1):
-        print(f"\n[Test {i}/{len(test_queries)}] {test['description']}")
-        print(f"Query: {test['query']}")
-
+    for query, description in test_queries:
+        print(f'\n[{description}] {query}')
         try:
-            result = await guarded_agent.run(test['query'])
-            print(f"✓ Response: {result.output}")
+            result = await guarded_agent.run(query)
+            print(f'✓ Response: {result.output}')
         except Exception as e:
-            print(f"✗ Blocked: {str(e)[:100]}")
+            print(f'✗ Blocked: {str(e)[:120]}')
 
-    print("\n" + "=" * 70)
-    print("Demo complete!")
+    print('\n' + '=' * 70)
+    print('Demo complete!')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())

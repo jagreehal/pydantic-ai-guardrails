@@ -1,119 +1,152 @@
-"""Pydantic AI Guardrails - Production-ready guardrails for Pydantic AI.
+"""Guardrails for Pydantic AI, built as native capabilities.
 
-This library provides native-style guardrails for Pydantic AI, following
-the framework's architectural patterns to deliver an excellent developer
-experience for input and output validation.
+Every guardrail is a :class:`pydantic_ai.capabilities.AbstractCapability`, so you
+add them exactly like pydantic-ai's own capabilities:
 
-Example:
-    ```python
-    from pydantic_ai import Agent
-    from pydantic_ai_guardrails import (
-        GuardedAgent,
-        InputGuardrail,
-        OutputGuardrail,
-        GuardrailResult,
-    )
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import DetectPII, LimitOutputLength, LimitCost
 
-    # Define custom guardrail
-    async def check_length(prompt: str) -> GuardrailResult:
-        if len(prompt) > 1000:
-            return {
-                'tripwire_triggered': True,
-                'message': 'Prompt exceeds maximum length',
-                'severity': 'high',
-            }
-        return {'tripwire_triggered': False}
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[
+        DetectPII(),
+        LimitOutputLength(min_chars=10),
+        LimitCost(max_total_tokens=50_000),
+    ],
+)
+```
 
-    # Use with agent
-    agent = Agent('openai:gpt-4o')
-    guarded_agent = GuardedAgent(
-        agent,
-        input_guardrails=[InputGuardrail(check_length)],
-    )
-
-    result = await guarded_agent.run('Your prompt here')
-    ```
+Input guardrails block the run by raising :class:`InputBlocked`. Output guardrails
+default to asking the model to retry (via ``ModelRetry``); pass ``on_fail='raise'``
+to abort or ``on_fail='warn'`` to log and continue.
 """
 
-from .__version__ import __version__
-from ._config import (
-    GuardrailConfig,
-    create_guarded_agent_from_config,
-    load_config,
-    load_guardrails_from_config,
-)
-from ._context import GuardrailContext, create_context
-from ._guarded_agent import GuardedAgent
-from ._guardrails import (
-    AgentDepsT,
+from __future__ import annotations
+
+from pydantic_ai_guardrails._async import AsyncGuardrail
+from pydantic_ai_guardrails._base import (
     InputGuardrail,
-    InputGuardrailFunc,
-    MetadataT,
-    OutputDataT,
+    InputGuardrailBase,
     OutputGuardrail,
-    OutputGuardrailFunc,
+    OutputGuardrailBase,
 )
-from ._parallel import (
-    execute_input_guardrails_parallel,
-    execute_output_guardrails_parallel,
+from pydantic_ai_guardrails._cost import LimitCost
+from pydantic_ai_guardrails._exceptions import (
+    BudgetExceeded,
+    GuardrailError,
+    GuardrailFailed,
+    InputBlocked,
+    OutputBlocked,
+    ToolDenied,
 )
-from ._results import GuardrailResult, GuardrailResultDict
-from ._telemetry import configure_telemetry, create_telemetry, get_telemetry
-from ._testing import (
-    GuardrailTestCases,
-    MockAgent,
-    assert_guardrail_blocks,
-    assert_guardrail_passes,
-    assert_guardrail_result,
-    create_test_context,
+from pydantic_ai_guardrails._input import (
+    BlockKeywords,
+    DetectPII,
+    DetectPromptInjection,
+    DetectToxicity,
+    LimitInputLength,
+    PIIType,
+    RateLimit,
+    RateLimitStore,
 )
-from .exceptions import (
-    GuardrailViolation,
-    InputGuardrailViolation,
-    OutputGuardrailViolation,
+from pydantic_ai_guardrails._output import (
+    BlockRefusals,
+    DetectHallucination,
+    FilterToxicity,
+    LimitOutputLength,
+    LlmJudge,
+    MatchRegex,
+    RedactSecrets,
+    RequireToolUse,
+    ValidateJson,
+)
+from pydantic_ai_guardrails._tool import RestrictTools, ToolArgsCheck, ValidateToolArgs
+from pydantic_ai_guardrails._types import (
+    ApprovalFunc,
+    AsyncGuardFunc,
+    CheckResult,
+    ContextGuardFunc,
+    GuardFunc,
+    GuardrailMode,
+    OnInputFail,
+    OnOutputFail,
+    OutputCheckFunc,
+    OutputContextCheckFunc,
+)
+from pydantic_ai_guardrails.config import GuardrailConfig, build_guardrails, load_config
+from pydantic_ai_guardrails.tool_validators import (
+    args_allowlist_validator,
+    args_custom_validator,
+    args_schema_validator,
 )
 
 __all__ = (
-    # Version
-    "__version__",
-    # Core types
-    "InputGuardrail",
-    "OutputGuardrail",
-    "GuardrailResult",
-    "GuardrailResultDict",
-    "GuardrailContext",
-    # Function types
-    "InputGuardrailFunc",
-    "OutputGuardrailFunc",
-    # Type variables
-    "AgentDepsT",
-    "OutputDataT",
-    "MetadataT",
-    # Context utilities
-    "create_context",
+    '__version__',
+    # Custom guardrails (bring your own check)
+    'InputGuardrail',
+    'OutputGuardrail',
+    'AsyncGuardrail',
+    # Base classes (subclass to build your own built-in)
+    'InputGuardrailBase',
+    'OutputGuardrailBase',
+    # Input guardrails
+    'DetectPII',
+    'DetectPromptInjection',
+    'DetectToxicity',
+    'BlockKeywords',
+    'LimitInputLength',
+    'RateLimit',
+    'RateLimitStore',
+    'PIIType',
+    # Output guardrails
+    'LimitOutputLength',
+    'RedactSecrets',
+    'ValidateJson',
+    'FilterToxicity',
+    'DetectHallucination',
+    'MatchRegex',
+    'BlockRefusals',
+    'RequireToolUse',
+    'LlmJudge',
+    # Tool guardrails
+    'RestrictTools',
+    'ValidateToolArgs',
+    'ToolArgsCheck',
+    # Cost
+    'LimitCost',
+    # Per-tool argument validators (for @agent.tool(args_validator=...))
+    'args_schema_validator',
+    'args_custom_validator',
+    'args_allowlist_validator',
+    # Config
+    'GuardrailConfig',
+    'load_config',
+    'build_guardrails',
+    # Types
+    'OnInputFail',
+    'OnOutputFail',
+    'CheckResult',
+    'GuardFunc',
+    'ContextGuardFunc',
+    'OutputCheckFunc',
+    'OutputContextCheckFunc',
+    'ApprovalFunc',
+    'AsyncGuardFunc',
+    'GuardrailMode',
     # Exceptions
-    "GuardrailViolation",
-    "InputGuardrailViolation",
-    "OutputGuardrailViolation",
-    # Integration
-    "GuardedAgent",
-    # Parallel execution
-    "execute_input_guardrails_parallel",
-    "execute_output_guardrails_parallel",
-    # Telemetry
-    "configure_telemetry",
-    "create_telemetry",
-    "get_telemetry",
-    # Configuration
-    "GuardrailConfig",
-    "load_config",
-    "load_guardrails_from_config",
-    "create_guarded_agent_from_config",
-    # Testing utilities
-    "assert_guardrail_blocks",
-    "assert_guardrail_passes",
-    "assert_guardrail_result",
-    "create_test_context",
-    "GuardrailTestCases",
-    "MockAgent",
+    'GuardrailError',
+    'InputBlocked',
+    'OutputBlocked',
+    'BudgetExceeded',
+    'ToolDenied',
+    'GuardrailFailed',
 )
+
+
+def __getattr__(name: str) -> object:
+    if name == '__version__':
+        from pydantic_ai_guardrails.__version__ import __version__
+
+        return __version__
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')

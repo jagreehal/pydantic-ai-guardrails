@@ -1,45 +1,31 @@
 {
   "version": 1,
-  "settings": {
-    "parallel": true,
-    "on_block": "raise",
-    "telemetry": false
-  },
-  "input": {
-    "version": 1,
-    "guardrails": [
-      {
-        "name": "length_limit",
-        "config": {
-          "max_chars": 500,
-          "max_tokens": 100
-        }
-      },
-      {
-        "name": "pii_detector",
-        "config": {
-          "detect_types": ["email", "phone", "ssn"],
-          "action": "block"
-        }
+  "guardrails": [
+    {
+      "type": "LimitInputLength",
+      "config": {
+        "max_chars": 500,
+        "max_tokens": 100
       }
-    ]
-  },
-  "output": {
-    "version": 1,
-    "guardrails": [
-      {
-        "name": "min_length",
-        "config": {
-          "min_chars": 20,
-          "min_words": 5
-        }
-      },
-      {
-        "name": "secret_redaction",
-        "config": {
-          "patterns": ["openai_api_key", "github_token"]
-        }
+    },
+    {
+      "type": "DetectPII",
+      "config": {
+        "types": ["email", "phone", "ssn"]
       }
-    ]
-  }
+    },
+    {
+      "type": "LimitOutputLength",
+      "config": {
+        "min_chars": 20,
+        "min_words": 5
+      }
+    },
+    {
+      "type": "RedactSecrets",
+      "config": {
+        "patterns": ["openai_api_key", "github_token"]
+      }
+    }
+  ]
 }

@@ -31,7 +31,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic-ai>=1.41.0",
+    "pydantic-ai>=2.0.0",
     "typing-extensions>=4.15.0",
     "anyio>=4.12.1",
 ]
@@ -70,7 +70,7 @@ telemetry = [
     "opentelemetry-sdk>=1.39.1",
 ]
 evals = [
-    "pydantic-evals>=1.41.0",
+    "pydantic-evals>=2.0.0",
 ]
 all = [
     "pydantic-ai-guardrails[pii-detection,toxicity-detection,prompt-injection,telemetry,evals]",
@@ -131,7 +131,12 @@ ignore = [
     "SIM105", # contextlib.suppress (try-except-pass is clearer in examples)
     "SIM108", # ternary operators (if-else can be clearer)
     "ARG001", # unused arguments (required by signatures, especially in examples)
+    "ARG002", # unused method arguments (capability hook signatures are dictated by pydantic-ai)
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use throwaway lambdas (unused args) and import-availability guards.
+"tests/**" = ["ARG005", "F401"]
 
 [tool.mypy]
 python_version = "3.10"

@@ -120,97 +120,64 @@ Layer 3: autoevals (LLM-powered quality)
     └─ RAG faithfulness
 ```
 
-## Integration Patterns
+## Integration Patterns (v2)
 
-### Creating Custom Wrapper Functions
-
-All external libraries can be wrapped using the factory pattern:
+Guardrails are native pydantic-ai capabilities — attach them with `capabilities=[...]`:
 
 ```python
-from pydantic_ai_guardrails import InputGuardrail, GuardrailResult
-import asyncio
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import (
+    DetectPII,
+    DetectPromptInjection,
+    InputGuardrail,
+    LimitInputLength,
+    RedactSecrets,
+)
 
-def external_scanner_wrapper(scanner, severity="high") -> InputGuardrail:
-    """Wrap any external scanner as an InputGuardrail."""
+async def not_too_long(text: str) -> bool:
+    return len(text) <= 2000
 
-    async def _validate(prompt: str) -> GuardrailResult:
-        # Run sync scanner in thread pool
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, scanner.scan, prompt)
-
-        if result.is_violation:
-            return {
-                'tripwire_triggered': True,
-                'message': f"Scanner detected issue: {result.reason}",
-                'severity': severity,
-                'suggestion': "Revise input to address the issue",
-                'metadata': {'score': result.risk_score}
-            }
-
-        return {'tripwire_triggered': False}
-
-    return InputGuardrail(_validate, name="external.scanner")
-```
-
-### Composing Multiple Layers
-
-Mix and match guardrails from different sources:
-
-```python
-from pydantic_ai_guardrails import GuardedAgent
-from pydantic_ai_guardrails.guardrails.input import length_limit
-from llm_guard_basic import llm_guard_input_scanner
-from llm_guard.input_scanners import PromptInjection
-from autoevals_factuality import factuality_guardrail
-
-guarded_agent = GuardedAgent(
-    base_agent,
-    input_guardrails=[
-        # Native (fast)
-        length_limit(max_length=2000),
-
-        # llm-guard (ML-powered)
-        llm_guard_input_scanner(PromptInjection()),
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[
+        LimitInputLength(max_chars=2000),
+        DetectPII(types=['email', 'ssn']),
+        DetectPromptInjection(sensitivity='high'),
+        InputGuardrail(guard=not_too_long),
+        RedactSecrets(),
     ],
-    output_guardrails=[
-        # autoevals (LLM judge)
-        factuality_guardrail(threshold=0.7),
-    ],
-    parallel=True,  # Run all guardrails concurrently
-    max_retries=2   # Allow LLM self-correction
 )
 ```
 
-## Performance Optimization
-
-### Parallel Execution
-
-Enable `parallel=True` to run independent guardrails concurrently:
+Wrap external scanners as custom guardrails (checks return `bool`, a reason `str`, or `(passed, reason)`):
 
 ```python
-# Sequential: ~500ms total (5 × 100ms each)
-agent = GuardedAgent(agent, input_guardrails=[g1, g2, g3, g4, g5])
+from pydantic_ai_guardrails import InputGuardrail
+import asyncio
 
-# Parallel: ~100ms total (all run simultaneously)
-agent = GuardedAgent(agent, input_guardrails=[g1, g2, g3, g4, g5], parallel=True)
+def llm_guard_wrapper(scanner) -> InputGuardrail:
+    async def guard(prompt: str) -> bool:
+        loop = asyncio.get_event_loop()
+        _, is_valid, _ = await loop.run_in_executor(None, scanner.scan, prompt)
+        return is_valid
+    return InputGuardrail(guard=guard)
 ```
 
-### Layer Ordering
-
-Place faster guardrails first to fail-fast:
+Compose native + external layers:
 
 ```python
-input_guardrails=[
-    # Layer 1: Fast regex checks (< 1ms)
-    length_limit(),
-    blocked_keywords(),
+from pydantic_ai_guardrails.evals import evaluator_guardrail
+from autoevals.llm import Factuality
+from llm_guard.input_scanners import PromptInjection
 
-    # Layer 2: ML models (50-100ms)
-    llm_guard_input_scanner(PromptInjection()),
-
-    # Layer 3: LLM calls (500-1000ms)
-    # (typically used for output, not input)
-]
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[
+        LimitInputLength(max_chars=2000),
+        llm_guard_wrapper(PromptInjection()),
+        evaluator_guardrail(Factuality(), kind='output', threshold=0.7),
+    ],
+)
 ```
 
 ## When to Use Each Layer
@@ -224,10 +191,10 @@ input_guardrails=[
 - Zero-dependency deployments
 
 **Examples:**
-- Character/token limits
-- Blocked keyword lists
-- Rate limiting
-- Regex pattern matching
+- Character/token limits (`LimitInputLength`, `LimitOutputLength`)
+- Blocked keyword lists (`BlockKeywords`)
+- Rate limiting (`RateLimit`)
+- Regex pattern matching (`MatchRegex`)
 
 ### llm-guard
 

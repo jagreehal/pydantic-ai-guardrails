@@ -9,7 +9,8 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
-from .._guardrails import OutputGuardrail
+from pydantic_ai_guardrails import OutputGuardrail
+
 from ._wrapper import evaluator_guardrail
 
 __all__ = (
@@ -33,7 +34,7 @@ def output_contains(
     case_sensitive: bool = True,
     as_strings: bool = False,
     name: str | None = None,
-) -> OutputGuardrail[Any, Any, dict[str, Any]]:
+) -> OutputGuardrail:
     """Create output guardrail that checks if output contains a value.
 
     For strings, checks if value is a substring of output.
@@ -67,7 +68,7 @@ def output_equals(
     expected_value: Any,
     *,
     name: str | None = None,
-) -> OutputGuardrail[Any, Any, dict[str, Any]]:
+) -> OutputGuardrail:
     """Create output guardrail that checks exact equality.
 
     Args:
@@ -95,7 +96,7 @@ def output_equals_expected(
     expected_output: Any,
     *,
     name: str | None = None,
-) -> OutputGuardrail[Any, Any, dict[str, Any]]:
+) -> OutputGuardrail:
     """Create output guardrail that compares against expected output.
 
     Uses the EqualsExpected evaluator which compares ctx.output to ctx.expected_output.
@@ -126,7 +127,7 @@ def output_is_instance(
     type_name: str,
     *,
     name: str | None = None,
-) -> OutputGuardrail[Any, Any, dict[str, Any]]:
+) -> OutputGuardrail:
     """Create output guardrail that checks output type.
 
     Args:
@@ -160,7 +161,7 @@ def output_llm_judge(
     score: OutputConfig | Literal[False] = False,
     assertion: OutputConfig | Literal[False] | None = None,
     name: str | None = None,
-) -> OutputGuardrail[Any, Any, dict[str, Any]]:
+) -> OutputGuardrail:
     """Create output guardrail using LLM-as-a-judge evaluation.
 
     This wraps pydantic_evals' LLMJudge evaluator as an output guardrail.
@@ -217,7 +218,7 @@ def output_max_duration(
     seconds: float | timedelta,
     *,
     name: str | None = None,
-) -> OutputGuardrail[Any, Any, dict[str, Any]]:
+) -> OutputGuardrail:
     """Create output guardrail that checks execution duration.
 
     Note: This evaluates the duration stored in the EvaluatorContext,
@@ -249,7 +250,7 @@ def output_has_matching_span(
     query: SpanQuery,
     *,
     name: str | None = None,
-) -> OutputGuardrail[Any, Any, dict[str, Any]]:
+) -> OutputGuardrail:
     """Create output guardrail that checks span tree for matching spans.
 
     Note: This evaluator requires span tree access, which is typically not

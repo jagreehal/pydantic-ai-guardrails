@@ -1,72 +1,39 @@
 {
   "version": 1,
-  "input": {
-    "version": 1,
-    "guardrails": [
-      {
-        "name": "Contains PII",
-        "config": {
-          "entities": [
-            "EMAIL_ADDRESS",
-            "PHONE_NUMBER",
-            "US_SSN",
-            "CREDIT_CARD",
-            "IP_ADDRESS"
-          ],
-          "block": true
-        }
-      },
-      {
-        "name": "Moderation",
-        "config": {
-          "categories": [
-            "hate",
-            "hate/threatening",
-            "harassment",
-            "harassment/threatening",
-            "violence",
-            "violence/graphic"
-          ]
-        }
-      },
-      {
-        "name": "Prompt Injection Detection",
-        "config": {
-          "confidence_threshold": 0.7
-        }
-      },
-      {
-        "name": "Jailbreak",
-        "config": {
-          "confidence_threshold": 0.8
-        }
+  "guardrails": [
+    {
+      "type": "DetectPII",
+      "config": {
+        "types": ["email", "phone", "ssn", "credit_card", "ip_address"]
       }
-    ]
-  },
-  "output": {
-    "version": 1,
-    "guardrails": [
-      {
-        "name": "Contains PII",
-        "config": {
-          "entities": [
-            "EMAIL_ADDRESS",
-            "PHONE_NUMBER",
-            "CREDIT_CARD"
-          ],
-          "block": true
-        }
-      },
-      {
-        "name": "Hallucination Detection",
-        "config": {}
-      },
-      {
-        "name": "NSFW Text",
-        "config": {
-          "confidence_threshold": 0.7
-        }
+    },
+    {
+      "type": "DetectToxicity",
+      "config": {
+        "categories": ["hate_speech", "threats", "personal_attacks"]
       }
-    ]
-  }
+    },
+    {
+      "type": "DetectPromptInjection",
+      "config": {
+        "sensitivity": "high"
+      }
+    },
+    {
+      "type": "RedactSecrets",
+      "config": {
+        "patterns": ["openai_api_key", "github_token", "credit_card"]
+      }
+    },
+    {
+      "type": "DetectHallucination",
+      "config": {}
+    },
+    {
+      "type": "FilterToxicity",
+      "config": {
+        "categories": ["profanity", "hate_speech", "offensive"]
+      }
+    }
+  ]
 }
