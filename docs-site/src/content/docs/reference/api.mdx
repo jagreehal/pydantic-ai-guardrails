@@ -1,498 +1,144 @@
 ---
 title: API Reference
-description: Complete API documentation for pydantic-ai-guardrails
+description: Signatures for every public class and function
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+Import everything from `pydantic_ai_guardrails` unless noted. Every guardrail is a `pydantic_ai.capabilities.AbstractCapability` added with `Agent(capabilities=[...])`.
 
-## Core Classes
+## Lifecycle hooks
 
-### GuardedAgent
+| Stage | Hook | Used by |
+|-------|------|---------|
+| Before the run | `before_run` | input guardrails |
+| Before each model request | `before_model_request` | `LimitCost` |
+| Around each model request | `wrap_model_request` | `AsyncGuardrail` |
+| Tool preparation | `prepare_tools` | `RestrictTools` |
+| Before a tool runs | `before_tool_execute` | `RestrictTools`, `ValidateToolArgs` |
+| After output is produced | `after_output_process` | output guardrails |
 
-The main class for wrapping Pydantic AI agents with guardrails.
+## Input guardrails
 
-```python
-from pydantic_ai_guardrails import GuardedAgent
-
-class GuardedAgent:
-    def __init__(
-        self,
-        agent: Agent,
-        input_guardrails: list[InputGuardrail] | None = None,
-        output_guardrails: list[OutputGuardrail] | None = None,
-        parallel: bool = False,
-        on_block: Literal['raise', 'log'] = 'raise',
-        max_retries: int = 0,
-        telemetry: bool = False,
-    ) -> None: ...
-    
-    async def run(
-        self,
-        prompt: str,
-        *,
-        deps: Any = None,
-        **kwargs,
-    ) -> AgentResult: ...
-```
-
-#### Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `agent` | `Agent` | required | Pydantic AI agent to wrap |
-| `input_guardrails` | `list[InputGuardrail]` | `None` | Input validation guardrails |
-| `output_guardrails` | `list[OutputGuardrail]` | `None` | Output validation guardrails |
-| `parallel` | `bool` | `False` | Run guardrails concurrently |
-| `on_block` | `str` | `'raise'` | Action on violation |
-| `max_retries` | `int` | `0` | Auto-retry attempts |
-| `telemetry` | `bool` | `False` | Enable OpenTelemetry |
-
-### InputGuardrail
-
-Validates input before agent execution.
+`on_fail: 'raise' | 'warn' = 'raise'`. Failure raises `InputBlocked`.
 
 ```python
-from pydantic_ai_guardrails import InputGuardrail
-
-class InputGuardrail:
-    def __init__(
-        self,
-        validate_fn: Callable[[str], Awaitable[GuardrailResult]] | Callable[[str], GuardrailResult],
-        name: str | None = None,
-        description: str | None = None,
-    ) -> None: ...
-    
-    async def validate(
-        self,
-        prompt: str,
-        context: GuardrailContext,
-    ) -> GuardrailResult: ...
+DetectPII(types=('email', 'phone', 'ssn', 'credit_card', 'ip_address'), backend='regex', score_threshold=0.5, on_fail='raise')
+DetectPromptInjection(sensitivity='medium', extra_patterns=(), backend='regex',
+                      model='protectai/deberta-v3-base-prompt-injection-v2', threshold=0.5, on_fail='raise')
+DetectToxicity(categories=('profanity', 'hate_speech', 'threats', 'personal_attacks'), backend='regex', threshold=0.5, on_fail='raise')
+BlockKeywords(keywords, case_sensitive=False, whole_words=False, regex=False, on_fail='raise')
+LimitInputLength(max_chars=None, max_tokens=None, tokenizer='cl100k_base', on_fail='raise')
+RateLimit(max_requests, window_seconds=60.0, key=None, store=None, on_fail='raise')
+RateLimitStore()
 ```
 
-### OutputGuardrail
+## Output guardrails
 
-Validates output after agent execution.
+`on_fail: 'retry' | 'raise' | 'warn' = 'retry'`. `'retry'` raises `ModelRetry`; `'raise'` raises `OutputBlocked`.
 
 ```python
-from pydantic_ai_guardrails import OutputGuardrail
-
-class OutputGuardrail:
-    def __init__(
-        self,
-        validate_fn: Callable[..., Awaitable[GuardrailResult]] | Callable[..., GuardrailResult],
-        name: str | None = None,
-        description: str | None = None,
-    ) -> None: ...
-    
-    async def validate(
-        self,
-        output: str,
-        context: GuardrailContext,
-    ) -> GuardrailResult: ...
+LimitOutputLength(min_chars=None, max_chars=None, min_words=None, max_words=None, min_sentences=None, on_fail='retry')
+RedactSecrets(patterns=('openai_api_key', 'anthropic_api_key', 'aws_access_key', 'github_token',
+                        'slack_token', 'private_key', 'jwt'), placeholder='[REDACTED]',
+              redact_stream=True, stream_holdback=128)
+ValidateJson(require_valid=True, extract_markdown=True, required_keys=(), schema=None, on_fail='retry')
+FilterToxicity(categories=('profanity', 'hate_speech', 'threats', 'offensive'), backend='regex', threshold=0.5, on_fail='retry')
+DetectHallucination(check_uncertainty=True, check_placeholders=True, on_fail='retry')
+MatchRegex(patterns, require_all=False, full_match=False, case_sensitive=True, on_fail='retry')
+BlockRefusals(patterns=(...), case_sensitive=False, on_fail='retry')
+RequireToolUse(tools=None, require_all=False, on_fail='retry')
+LlmJudge(criteria, judge_model='openai:gpt-4o-mini', threshold=0.7, mode='score',
+         include_prompt=True, system_prompt=None, on_error='raise', on_fail='retry')
+RequireGrounding(sources=None, min_overlap=0.5, min_supported=0.8, min_words=3,
+                 require_citations=False, citation_pattern=r'\[\d+\]', on_fail='retry')
 ```
 
-### GuardrailResult
-
-Result returned by guardrail validation.
+## Tool and cost guardrails
 
 ```python
-from pydantic_ai_guardrails import GuardrailResult
-
-class GuardrailResult(TypedDict, total=False):
-    tripwire_triggered: bool  # Required
-    message: str
-    severity: Literal['low', 'medium', 'high', 'critical']
-    suggestion: str
-    metadata: dict[str, Any]
+RestrictTools(allowed=None, blocked=[], require_approval=[], approval=None)
+ValidateToolArgs(check, tools=None)
+LimitCost(max_input_tokens=None, max_output_tokens=None, max_total_tokens=None,
+          max_cost_usd=None, on_unknown_price='raise')
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tripwire_triggered` | `bool` | Yes | Whether violation occurred |
-| `message` | `str` | No | Human-readable message |
-| `severity` | `str` | No | Violation severity |
-| `suggestion` | `str` | No | Feedback for auto-retry |
-| `metadata` | `dict` | No | Additional data |
-
-### GuardrailContext
-
-Context passed to guardrail validation functions.
+## Adapters (`pydantic_ai_guardrails.adapters`)
 
 ```python
-from pydantic_ai_guardrails import GuardrailContext
-
-class GuardrailContext:
-    prompt: str
-    deps: Any
-    agent: Agent
-    metadata: dict[str, Any]
+LlmGuardInput(scanners, fail_fast=False, on_fail='raise')
+LlmGuardOutput(scanners, fail_fast=False, on_fail='retry')
+OpenAIModerationInput(model='omni-moderation-latest', categories=None, client=None, on_fail='raise')
+OpenAIModerationOutput(model='omni-moderation-latest', categories=None, client=None, on_fail='retry')
 ```
 
-## Factory Functions
+`RestrictTools` lists accept fnmatch globs. `approval(tool_name, args) -> bool` may be async. `ValidateToolArgs` `check(tool_name, args) -> str | None` may be async.
 
-### create_guarded_agent_from_config
-
-Create a GuardedAgent from a configuration file.
+## Custom guardrails
 
 ```python
-from pydantic_ai_guardrails import create_guarded_agent_from_config
-
-def create_guarded_agent_from_config(
-    agent: Agent,
-    config_path: str | Path,
-) -> GuardedAgent: ...
+InputGuardrail(guard=None, context_guard=None, on_fail='raise', label=None)
+OutputGuardrail(guard=None, context_guard=None, on_fail='retry', label=None)
+AsyncGuardrail(guard, mode='concurrent')  # 'concurrent' | 'blocking' | 'monitoring'
 ```
 
-### load_config
-
-Load a configuration file.
+Base classes for reusable guardrails:
 
 ```python
-from pydantic_ai_guardrails import load_config
+class InputGuardrailBase:
+    async def check(self, ctx, text) -> str | None: ...
 
-def load_config(path: str | Path) -> GuardrailConfig: ...
+class OutputGuardrailBase:
+    async def check(self, ctx, output, text) -> str | None: ...
+    async def transform(self, ctx, output, text) -> Any: ...  # optional rewrite
 ```
 
-### load_guardrails_from_config
+Check result type (`CheckResult`): `bool | str | None | tuple[bool, str]`.
 
-Extract guardrails and settings from config.
+## Tool argument validators
+
+For `@agent.tool(args_validator=...)`. Each raises `ModelRetry` on failure.
 
 ```python
-from pydantic_ai_guardrails import load_guardrails_from_config
-
-def load_guardrails_from_config(
-    config: GuardrailConfig,
-) -> tuple[list[InputGuardrail], list[OutputGuardrail], dict]: ...
+args_schema_validator(schema: type[BaseModel])
+args_custom_validator(validator_func: Callable[[dict], str | None])
+args_allowlist_validator(allowed_values: dict[str, list])
 ```
 
-### create_context
-
-Create a GuardrailContext for testing.
+## Config
 
 ```python
-from pydantic_ai_guardrails import create_context
-
-def create_context(
-    prompt: str = '',
-    deps: Any = None,
-    **metadata,
-) -> GuardrailContext: ...
+load_config(path: str | Path) -> GuardrailConfig
+build_guardrails(config: GuardrailConfig | dict) -> list[AbstractCapability]
 ```
 
-## Input Guardrails
+See [JSON & YAML Config](../../configuration/json-yaml/).
 
-### length_limit
+## Testing (`pydantic_ai_guardrails.testing`)
 
 ```python
-from pydantic_ai_guardrails.guardrails.input import length_limit
-
-def length_limit(
-    max_chars: int | None = None,
-    max_tokens: int | None = None,
-) -> InputGuardrail: ...
+async def assert_input_blocked(guardrail, prompt, *, deps=None) -> InputBlocked
+async def assert_output_blocked(guardrail, output_text, *, prompt='Hello', deps=None) -> OutputBlocked
+async def assert_guardrail_passes(guardrail, prompt='Hello', *, output_text=None, deps=None) -> AgentRunResult
+async def run_with_input_guardrail(guardrail, prompt, *, deps=None) -> AgentRunResult
 ```
 
-### pii_detector
+See [Testing](../../testing/).
+
+## pydantic-evals (`pydantic_ai_guardrails.evals`)
 
 ```python
-from pydantic_ai_guardrails.guardrails.input import pii_detector
-
-def pii_detector(
-    detect_types: list[str] | None = None,
-    action: Literal['block', 'warn'] = 'block',
-) -> InputGuardrail: ...
+evaluator_guardrail(evaluator, *, kind='output', threshold=None, threshold_mode='gte', expected_output=None, name=None)
+output_contains(value, *, case_sensitive=True, as_strings=False, name=None)
+output_equals(expected_value, *, name=None)
+output_equals_expected(expected_output, *, name=None)
+output_is_instance(type_name, *, name=None)
+output_llm_judge(rubric, *, model=None, include_input=False, include_expected_output=False, threshold=0.7, name=None)
+output_max_duration(seconds, *, name=None)
+output_has_matching_span(query, *, name=None)
+async dataset_as_test_suite(guardrail, dataset, *, expect_blocked_when_no_expected=True) -> TestSuiteResult
 ```
 
-Supported types: `email`, `phone`, `ssn`, `credit_card`, `ip_address`
+Requires the `evals` extra. See [Pydantic Evals](../../integrations/pydantic-evals/).
 
-### prompt_injection
+## Exceptions
 
-```python
-from pydantic_ai_guardrails.guardrails.input import prompt_injection
-
-def prompt_injection(
-    model: str | None = None,
-    threshold: float = 0.7,
-) -> InputGuardrail: ...
-```
-
-### toxicity
-
-```python
-from pydantic_ai_guardrails.guardrails.input import toxicity
-
-def toxicity(
-    threshold: float = 0.5,
-) -> InputGuardrail: ...
-```
-
-### blocked_keywords
-
-```python
-from pydantic_ai_guardrails.guardrails.input import blocked_keywords
-
-def blocked_keywords(
-    keywords: list[str],
-    case_sensitive: bool = False,
-) -> InputGuardrail: ...
-```
-
-### rate_limit
-
-```python
-from pydantic_ai_guardrails.guardrails.input import rate_limit
-
-def rate_limit(
-    max_requests: int,
-    window_seconds: int = 60,
-    key_fn: Callable[[str, GuardrailContext], str] | None = None,
-) -> InputGuardrail: ...
-```
-
-## Output Guardrails
-
-### secret_redaction
-
-```python
-from pydantic_ai_guardrails.guardrails.output import secret_redaction
-
-def secret_redaction(
-    patterns: list[str] | None = None,
-) -> OutputGuardrail: ...
-```
-
-Default patterns: `openai_api_key`, `github_token`, `aws_secret`
-
-### min_length
-
-```python
-from pydantic_ai_guardrails.guardrails.output import min_length
-
-def min_length(
-    min_chars: int | None = None,
-    min_words: int | None = None,
-) -> OutputGuardrail: ...
-```
-
-### llm_judge
-
-```python
-from pydantic_ai_guardrails.guardrails.output import llm_judge
-
-def llm_judge(
-    rubric: str,
-    model: str | None = None,
-    threshold: float = 0.7,
-) -> OutputGuardrail: ...
-```
-
-### json_validator
-
-```python
-from pydantic_ai_guardrails.guardrails.output import json_validator
-
-def json_validator(
-    schema: dict | None = None,
-) -> OutputGuardrail: ...
-```
-
-### regex_match
-
-```python
-from pydantic_ai_guardrails.guardrails.output import regex_match
-
-def regex_match(
-    pattern: str,
-    must_match: bool = True,
-) -> OutputGuardrail: ...
-```
-
-### no_refusals
-
-```python
-from pydantic_ai_guardrails.guardrails.output import no_refusals
-
-def no_refusals() -> OutputGuardrail: ...
-```
-
-### tool_allowlist
-
-```python
-from pydantic_ai_guardrails.guardrails.output import tool_allowlist
-
-def tool_allowlist(
-    allowed_tools: list[str],
-) -> OutputGuardrail: ...
-```
-
-### require_tool_use
-
-```python
-from pydantic_ai_guardrails.guardrails.output import require_tool_use
-
-def require_tool_use(
-    required_tools: list[str] | None = None,
-) -> OutputGuardrail: ...
-```
-
-### validate_tool_parameters
-
-```python
-from pydantic_ai_guardrails.guardrails.output import validate_tool_parameters
-
-def validate_tool_parameters(
-    validators: dict[str, Callable[[dict], bool]],
-) -> OutputGuardrail: ...
-```
-
-## Telemetry
-
-### configure_telemetry
-
-```python
-from pydantic_ai_guardrails import configure_telemetry
-
-def configure_telemetry(
-    enabled: bool = True,
-    service_name: str = 'guardrails',
-    service_version: str | None = None,
-) -> None: ...
-```
-
-### get_telemetry
-
-```python
-from pydantic_ai_guardrails import get_telemetry
-
-def get_telemetry() -> GuardrailTelemetry: ...
-```
-
-## Testing Utilities
-
-### MockAgent
-
-```python
-from pydantic_ai_guardrails.testing import MockAgent
-
-class MockAgent:
-    def __init__(
-        self,
-        responses: list[str] | str,
-    ) -> None: ...
-```
-
-### GuardrailTestCases
-
-```python
-from pydantic_ai_guardrails.testing import GuardrailTestCases
-
-class GuardrailTestCases:
-    @staticmethod
-    def input_cases(guardrail: InputGuardrail) -> TestCaseBuilder: ...
-    
-    @staticmethod
-    def output_cases(guardrail: OutputGuardrail) -> TestCaseBuilder: ...
-```
-
-### TestCaseBuilder
-
-```python
-class TestCaseBuilder:
-    def should_pass(self, *inputs: str) -> TestCaseBuilder: ...
-    def should_fail(self, *inputs: str) -> TestCaseBuilder: ...
-    async def run(self) -> TestResults: ...
-```
-
-## Evals Integration
-
-### evaluator_guardrail
-
-```python
-from pydantic_ai_guardrails.evals import evaluator_guardrail
-
-def evaluator_guardrail(
-    evaluator: Evaluator,
-    kind: Literal['input', 'output'],
-    name: str | None = None,
-    threshold: float | None = None,
-    threshold_mode: Literal['gte', 'gt', 'lte', 'lt', 'eq'] = 'gte',
-) -> InputGuardrail | OutputGuardrail: ...
-```
-
-### output_contains
-
-```python
-from pydantic_ai_guardrails.evals import output_contains
-
-def output_contains(
-    value: str,
-    case_sensitive: bool = True,
-) -> OutputGuardrail: ...
-```
-
-### output_equals
-
-```python
-from pydantic_ai_guardrails.evals import output_equals
-
-def output_equals(expected: str) -> OutputGuardrail: ...
-```
-
-### output_is_instance
-
-```python
-from pydantic_ai_guardrails.evals import output_is_instance
-
-def output_is_instance(type_name: str) -> OutputGuardrail: ...
-```
-
-### output_llm_judge
-
-```python
-from pydantic_ai_guardrails.evals import output_llm_judge
-
-def output_llm_judge(
-    rubric: str,
-    model: str | None = None,
-    threshold: float = 0.7,
-) -> OutputGuardrail: ...
-```
-
-## Type Exports
-
-All public types are exported from the main module:
-
-```python
-from pydantic_ai_guardrails import (
-    # Core
-    GuardedAgent,
-    InputGuardrail,
-    OutputGuardrail,
-    GuardrailResult,
-    GuardrailContext,
-    
-    # Config
-    GuardrailConfig,
-    load_config,
-    load_guardrails_from_config,
-    create_guarded_agent_from_config,
-    
-    # Exceptions
-    GuardrailViolation,
-    InputGuardrailViolation,
-    OutputGuardrailViolation,
-    
-    # Telemetry
-    configure_telemetry,
-    get_telemetry,
-    
-    # Testing
-    create_context,
-)
-```
-
-## Next Steps
-
-- [Exceptions Reference](/reference/exceptions/)
-- [Quick Start](/getting-started/quick-start/)
-- [Custom Guardrails](/guides/custom-guardrails/)
+See [Exceptions](../exceptions/).

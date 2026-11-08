@@ -1,0 +1,50 @@
+---
+title: DetectPII
+description: Block prompts that contain personally identifiable information
+---
+
+Blocks prompts containing emails, phone numbers, SSNs, credit card numbers or IP addresses. Runs before the model is called.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `types` | `Sequence[str]` | all five | Any of `email`, `phone`, `ssn`, `credit_card`, `ip_address` |
+| `backend` | `'regex' \| 'presidio'` | `'regex'` | Detection engine |
+| `score_threshold` | `float` | `0.5` | Minimum Presidio confidence, in [0, 1] (Presidio backend only) |
+| `on_fail` | `'raise' \| 'warn'` | `'raise'` | Raise `InputBlocked` or log and continue |
+
+An unknown name in `types`, or a `score_threshold` outside [0, 1] or NaN, raises `ValueError` at construction, so a typo such as `'credit-card'` surfaces at startup.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import DetectPII, InputBlocked
+
+agent = Agent('openai:gpt-4o', capabilities=[DetectPII(types=['ssn', 'credit_card'])])
+
+try:
+    agent.run_sync('Charge card 4111-1111-1111-1111')
+except InputBlocked as e:
+    print(e.guardrail, e.reason)  # DetectPII detected PII: credit_card
+```
+
+### Presidio backend
+
+```bash
+pip install 'pydantic-ai-guardrails[pii-detection]'
+```
+
+```python
+from pydantic_ai_guardrails import DetectPII
+
+DetectPII(backend='presidio', types=['email', 'phone'], score_threshold=0.7)
+```
+
+Presidio uses NER models, so it catches formats the regex misses. Without the extra installed, construction raises `ImportError` with the install command.
+
+## Failure behaviour
+
+- `on_fail='raise'`: raises `InputBlocked` with `.guardrail == 'DetectPII'` and `.reason` listing the detected types.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and the run continues.

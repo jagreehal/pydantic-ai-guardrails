@@ -13,7 +13,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import ModelRequestContext
 from pydantic_ai.tools import RunContext
 
-from pydantic_ai_guardrails._base import GuardrailCapability, normalize_check_result
+from pydantic_ai_guardrails._base import GuardrailCapability, guardrail_span, normalize_check_result
 from pydantic_ai_guardrails._exceptions import GuardrailFailed
 from pydantic_ai_guardrails._types import AsyncGuardFunc, GuardrailMode
 
@@ -52,11 +52,17 @@ class AsyncGuardrail(GuardrailCapability):
             for p in sig.parameters.values()
             if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
         ]
-        if len(positional) >= 2:
-            result = await self.guard(ctx, messages)  # type: ignore[arg-type,call-arg]
-        else:
-            result = await self.guard(messages)  # type: ignore[arg-type,call-arg]
-        return normalize_check_result(result, default_reason='async guardrail failed')
+        with guardrail_span(self.name, ctx) as span:
+            if len(positional) >= 2:
+                result = await self.guard(ctx, messages)  # type: ignore[arg-type,call-arg]
+            else:
+                result = await self.guard(messages)  # type: ignore[arg-type,call-arg]
+            reason = normalize_check_result(result, default_reason='async guardrail failed')
+            if reason is None:
+                span.record('pass')
+            else:
+                span.record('warn' if self.mode == 'monitoring' else 'block', reason)
+            return reason
 
     async def wrap_model_request(
         self,

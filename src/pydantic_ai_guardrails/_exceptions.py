@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from pydantic_ai.exceptions import AgentRunError
 
+from pydantic_ai_guardrails._utils import trace_reasons
+
 __all__ = (
     'GuardrailError',
     'InputBlocked',
@@ -24,7 +26,18 @@ __all__ = (
 
 
 class GuardrailError(AgentRunError):
-    """Base class for guardrail violations that abort the run."""
+    """Base class for guardrail violations that abort the run.
+
+    Reasons can quote user content and exception messages end up in traces (and
+    pydantic-ai records them on its own agent spans), so the message of
+    :class:`InputBlocked`, :class:`OutputBlocked` and :class:`GuardrailFailed`
+    leaves the reason out unless ``PYDANTIC_AI_GUARDRAILS_TRACE_REASONS=1``.
+    The reason is always on ``.reason``.
+    """
+
+
+def _message(full: str, withheld: str) -> str:
+    return full if trace_reasons() else f'{withheld} (reason on .reason)'
 
 
 class InputBlocked(GuardrailError):
@@ -33,7 +46,7 @@ class InputBlocked(GuardrailError):
     def __init__(self, message: str, *, guardrail: str = '', reason: str = '') -> None:
         self.guardrail = guardrail
         self.reason = reason
-        super().__init__(message)
+        super().__init__(_message(message, f'{guardrail or "guardrail"}: input blocked') if reason else message)
 
 
 class OutputBlocked(GuardrailError):
@@ -42,7 +55,7 @@ class OutputBlocked(GuardrailError):
     def __init__(self, message: str, *, guardrail: str = '', reason: str = '') -> None:
         self.guardrail = guardrail
         self.reason = reason
-        super().__init__(message)
+        super().__init__(_message(message, f'{guardrail or "guardrail"}: output blocked') if reason else message)
 
 
 class BudgetExceeded(GuardrailError):
@@ -71,4 +84,4 @@ class GuardrailFailed(GuardrailError):
     def __init__(self, reason: str, *, guardrail: str = '') -> None:
         self.guardrail = guardrail
         self.reason = reason
-        super().__init__(f'Guardrail failed: {reason}')
+        super().__init__(_message(f'Guardrail failed: {reason}', f'Guardrail failed: {guardrail or "guardrail"}'))

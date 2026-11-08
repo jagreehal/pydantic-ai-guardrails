@@ -58,6 +58,7 @@ from pydantic_ai_guardrails._output import (
     LlmJudge,
     MatchRegex,
     RedactSecrets,
+    RequireGrounding,
     RequireToolUse,
     ValidateJson,
 )
@@ -109,6 +110,7 @@ __all__ = (
     'BlockRefusals',
     'RequireToolUse',
     'LlmJudge',
+    'RequireGrounding',
     # Tool guardrails
     'RestrictTools',
     'ValidateToolArgs',

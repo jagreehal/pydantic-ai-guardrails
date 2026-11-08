@@ -9,9 +9,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Codecov OIDC upload
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,evals,json-schema,yaml,tokens,telemetry]"
           pip list
 
       - name: Verify installation
@@ -32,18 +35,22 @@ jobs:
           python -c "import pydantic_ai_guardrails; print(f'Version: {pydantic_ai_guardrails.__version__}')"
 
       - name: Run linting
-        run: ruff check src tests
+        run: ruff check src tests examples
 
       - name: Run type checking
-        run: mypy src || true
+        run: mypy src
 
       - name: Run tests
+        # Coverage floor lives in pyproject.toml ([tool.coverage.report] fail_under).
         run: pytest -v --cov=src --cov-report=xml --cov-report=term-missing --tb=short
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
+          # Tokenless upload via GitHub OIDC once the repo is active on codecov.io.
+          # The coverage gate is pytest's fail_under, so reporting stays non-blocking.
+          use_oidc: true
           fail_ci_if_error: false

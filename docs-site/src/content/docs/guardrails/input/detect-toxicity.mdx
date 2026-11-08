@@ -1,0 +1,50 @@
+---
+title: DetectToxicity
+description: Block toxic prompts
+---
+
+Blocks prompts containing profanity, hate speech, threats or personal attacks. For model output, use [FilterToxicity](../../output/filter-toxicity/).
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `categories` | `Sequence[str]` | all four | Any of `profanity`, `hate_speech`, `threats`, `personal_attacks` |
+| `backend` | `'regex' \| 'detoxify'` | `'regex'` | Detection engine |
+| `threshold` | `float` | `0.5` | Minimum Detoxify score, in [0, 1] (Detoxify backend only) |
+| `on_fail` | `'raise' \| 'warn'` | `'raise'` | Raise `InputBlocked` or log and continue |
+
+An unknown category, or a `threshold` outside [0, 1] or NaN, raises `ValueError` at construction.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import DetectToxicity, InputBlocked
+
+agent = Agent('openai:gpt-4o', capabilities=[DetectToxicity(categories=['threats', 'personal_attacks'])])
+
+try:
+    agent.run_sync('You are an idiot')
+except InputBlocked as e:
+    print(e.reason)  # toxic content: personal_attacks
+```
+
+### Detoxify backend
+
+```bash
+pip install 'pydantic-ai-guardrails[toxicity-detection]'
+```
+
+```python
+from pydantic_ai_guardrails import DetectToxicity
+
+DetectToxicity(backend='detoxify', threshold=0.5)
+```
+
+Without the extra installed, construction raises `ImportError` with the install command.
+
+## Failure behaviour
+
+- `on_fail='raise'`: raises `InputBlocked`.
+- `on_fail='warn'`: logs and continues.

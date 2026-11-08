@@ -1,136 +1,60 @@
 ---
-title: Rate Limit
-description: Rate limit requests to prevent abuse
+title: RateLimit
+description: Limit how many runs a user or key can start
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
-The `rate_limiter` guardrail limits request frequency to prevent abuse and control costs.
-
-## Import
-
-```python
-from pydantic_ai_guardrails.guardrails.input import rate_limiter
-```
-
-## Basic Usage
-
-```python
-from pydantic_ai_guardrails import GuardedAgent
-from pydantic_ai_guardrails.guardrails.input import rate_limiter
-
-guarded_agent = GuardedAgent(
-    agent,
-    input_guardrails=[
-        rate_limiter(max_requests_per_minute=10),
-    ],
-)
-```
+Rejects a run once a key exceeds its request rate within a sliding window.
 
 ## Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `max_requests_per_minute` | `int` | Required | Max requests per minute |
-| `key_func` | `Callable` | `None` | Function to extract rate limit key |
+| `max_requests` | `int` | required | Requests allowed per window (must be > 0) |
+| `window_seconds` | `float` | `60.0` | Window length |
+| `key` | `Callable[[RunContext], str] \| None` | `None` | Derives the bucket from the run context. Without it, one global bucket is used |
+| `store` | `RateLimitStore` | process-wide store | Counter storage. Pass your own to isolate counters |
+| `on_fail` | `'raise' \| 'warn'` | `'raise'` | Raise `InputBlocked` or log and continue |
+
+If the `key` function raises, the exception propagates out of `agent.run()`.
 
 ## Examples
 
-### Global Rate Limit
-
 ```python
-# 20 requests per minute for all users combined
-guardrail = rate_limiter(max_requests_per_minute=20)
-```
+from dataclasses import dataclass
 
-### Per-User Rate Limit
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import InputBlocked, RateLimit
 
-```python
-# 10 requests per minute per user
-guardrail = rate_limiter(
-    max_requests_per_minute=10,
-    key_func=lambda ctx: ctx.deps.get('user_id'),
+
+@dataclass
+class Deps:
+    user_id: str
+
+
+agent = Agent(
+    'openai:gpt-4o',
+    deps_type=Deps,
+    capabilities=[RateLimit(max_requests=10, window_seconds=60, key=lambda ctx: ctx.deps.user_id)],
 )
+
+try:
+    agent.run_sync('Hello', deps=Deps(user_id='u_123'))
+except InputBlocked as e:
+    print(e.reason)  # rate limit exceeded: 10/10 per 60s
 ```
 
-### Per-API-Key Rate Limit
+### Isolated counters
 
 ```python
-guardrail = rate_limiter(
-    max_requests_per_minute=100,
-    key_func=lambda ctx: ctx.deps.get('api_key'),
-)
+from pydantic_ai_guardrails import RateLimit, RateLimitStore
+
+store = RateLimitStore()
+RateLimit(max_requests=5, window_seconds=1, store=store)
 ```
 
-### Per-IP Rate Limit
+`RateLimitStore` is in-memory and per-process. For limits across several workers, subclass it and implement `check_and_increment(key, max_requests, window_seconds) -> tuple[bool, int]` against shared storage such as Redis.
 
-```python
-guardrail = rate_limiter(
-    max_requests_per_minute=30,
-    key_func=lambda ctx: ctx.deps.get('client_ip'),
-)
-```
+## Failure behaviour
 
-## Violation Result
-
-When triggered, returns:
-
-```python
-{
-    'tripwire_triggered': True,
-    'message': 'Rate limit exceeded: 10 requests per minute',
-    'severity': 'medium',
-    'metadata': {
-        'limit': 10,
-        'window': 'minute',
-        'key': 'user_123',
-    },
-}
-```
-
-## Use Cases
-
-- **Cost control**: Limit expensive LLM calls
-- **Abuse prevention**: Stop automated attacks
-- **Fair usage**: Ensure resource sharing
-- **API quotas**: Enforce subscription limits
-
-<Aside type="note">
-The built-in rate limiter uses in-memory storage. For distributed applications, implement a custom guardrail with Redis or similar.
-</Aside>
-
-## Distributed Rate Limiting
-
-For multi-instance deployments:
-
-```python
-import redis.asyncio as redis
-from pydantic_ai_guardrails import GuardrailContext, GuardrailResult
-
-class RedisRateLimiter:
-    def __init__(self, redis_url: str, max_rpm: int):
-        self.redis = redis.from_url(redis_url)
-        self.max_rpm = max_rpm
-    
-    async def __call__(self, ctx: GuardrailContext, prompt: str) -> GuardrailResult:
-        user_id = ctx.deps.get('user_id', 'global')
-        key = f'rate_limit:{user_id}'
-        
-        count = await self.redis.incr(key)
-        if count == 1:
-            await self.redis.expire(key, 60)
-        
-        if count > self.max_rpm:
-            return {
-                'tripwire_triggered': True,
-                'message': f'Rate limit exceeded: {self.max_rpm}/min',
-                'severity': 'medium',
-            }
-        
-        return {'tripwire_triggered': False}
-```
-
-## Related
-
-- [Input Guardrails Guide](/guides/input-guardrails/)
-- [Length Limit](/guardrails/input/length-limit/)
+- `on_fail='raise'`: raises `InputBlocked`.
+- `on_fail='warn'`: logs and continues. The request is not counted when it is over the limit.

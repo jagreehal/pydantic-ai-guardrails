@@ -126,10 +126,10 @@ agent = Agent('openai:gpt-4o', capabilities=build_guardrails(load_config('guardr
 
 ## Key Patterns
 
-1. **Native capabilities** — `Agent(..., capabilities=[DetectPII(), LimitCost(...)])`
-2. **Custom checks** — `InputGuardrail(guard=fn)` / `OutputGuardrail(guard=fn)` where `fn` returns `bool | str | (bool, str)`
-3. **External sync scanners** — wrap with `run_in_executor` inside a guard function
-4. **Output failures** — default `on_fail='retry'` (model self-corrects); use `on_fail='raise'` to abort
+1. **Native capabilities**: `Agent(..., capabilities=[DetectPII(), LimitCost(...)])`
+2. **Custom checks**: `InputGuardrail(guard=fn)` / `OutputGuardrail(guard=fn)` where `fn` returns `bool | str | (bool, str)`
+3. **External scanners**: use `pydantic_ai_guardrails.adapters` (llm-guard, OpenAI moderation), or wrap a scanner in a guard function
+4. **Output failures**: default `on_fail='retry'` (model self-corrects); use `on_fail='raise'` to abort
 
 ## Full Examples
 

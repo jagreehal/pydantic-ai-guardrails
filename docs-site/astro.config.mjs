@@ -15,7 +15,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Pydantic AI Guardrails',
-      description: 'Production-ready guardrails for Pydantic AI agents',
+      description: 'Guardrails for Pydantic AI agents, built as native capabilities',
       social: [
         {
           icon: 'github',
@@ -50,7 +50,9 @@ export default defineConfig({
             { label: 'Output Guardrails', slug: 'guides/output-guardrails' },
             { label: 'Custom Guardrails', slug: 'guides/custom-guardrails' },
             { label: 'Auto-Retry', slug: 'guides/auto-retry' },
-            { label: 'Parallel Execution', slug: 'guides/parallel-execution' },
+            { label: 'Async Guardrails', slug: 'guides/async-guardrails' },
+            { label: 'Streaming', slug: 'guides/streaming' },
+            { label: 'Multiple Agents', slug: 'guides/multi-agent' },
             { label: 'Error Handling', slug: 'guides/error-handling' },
             { label: 'Human-in-the-Loop', slug: 'guides/human-in-the-loop' },
           ],
@@ -60,27 +62,40 @@ export default defineConfig({
           items: [
             { label: 'Overview', slug: 'guardrails/overview' },
             {
-              label: 'Input Guardrails',
+              label: 'Input',
               collapsed: true,
               items: [
-                { label: 'Length Limit', slug: 'guardrails/input/length-limit' },
-                { label: 'PII Detector', slug: 'guardrails/input/pii-detector' },
-                { label: 'Prompt Injection', slug: 'guardrails/input/prompt-injection' },
-                { label: 'Toxicity', slug: 'guardrails/input/toxicity' },
-                { label: 'Blocked Keywords', slug: 'guardrails/input/blocked-keywords' },
-                { label: 'Rate Limit', slug: 'guardrails/input/rate-limit' },
+                { label: 'DetectPII', slug: 'guardrails/input/detect-pii' },
+                { label: 'DetectPromptInjection', slug: 'guardrails/input/detect-prompt-injection' },
+                { label: 'DetectToxicity', slug: 'guardrails/input/detect-toxicity' },
+                { label: 'BlockKeywords', slug: 'guardrails/input/block-keywords' },
+                { label: 'LimitInputLength', slug: 'guardrails/input/limit-input-length' },
+                { label: 'RateLimit', slug: 'guardrails/input/rate-limit' },
               ],
             },
             {
-              label: 'Output Guardrails',
+              label: 'Output',
               collapsed: true,
               items: [
-                { label: 'Secret Redaction', slug: 'guardrails/output/secret-redaction' },
-                { label: 'LLM Judge', slug: 'guardrails/output/llm-judge' },
-                { label: 'JSON Validator', slug: 'guardrails/output/json-validator' },
-                { label: 'Regex Match', slug: 'guardrails/output/regex-match' },
-                { label: 'No Refusals', slug: 'guardrails/output/no-refusals' },
-                { label: 'Tool Validation', slug: 'guardrails/output/tool-validation' },
+                { label: 'LimitOutputLength', slug: 'guardrails/output/limit-output-length' },
+                { label: 'RedactSecrets', slug: 'guardrails/output/redact-secrets' },
+                { label: 'ValidateJson', slug: 'guardrails/output/validate-json' },
+                { label: 'FilterToxicity', slug: 'guardrails/output/filter-toxicity' },
+                { label: 'DetectHallucination', slug: 'guardrails/output/detect-hallucination' },
+                { label: 'MatchRegex', slug: 'guardrails/output/match-regex' },
+                { label: 'BlockRefusals', slug: 'guardrails/output/block-refusals' },
+                { label: 'RequireToolUse', slug: 'guardrails/output/require-tool-use' },
+                { label: 'LlmJudge', slug: 'guardrails/output/llm-judge' },
+                { label: 'RequireGrounding', slug: 'guardrails/output/require-grounding' },
+              ],
+            },
+            {
+              label: 'Tools & Cost',
+              collapsed: true,
+              items: [
+                { label: 'RestrictTools', slug: 'guardrails/tools/restrict-tools' },
+                { label: 'ValidateToolArgs', slug: 'guardrails/tools/validate-tool-args' },
+                { label: 'LimitCost', slug: 'guardrails/cost/limit-cost' },
               ],
             },
           ],
@@ -88,18 +103,17 @@ export default defineConfig({
         {
           label: 'Integrations',
           items: [
-            { label: 'Logfire', slug: 'integrations/logfire' },
+            { label: 'OpenTelemetry & Logfire', slug: 'integrations/opentelemetry' },
+            { label: 'Audit Log', slug: 'integrations/audit-log' },
             { label: 'llm-guard', slug: 'integrations/llm-guard' },
+            { label: 'OpenAI Moderation', slug: 'integrations/openai-moderation' },
             { label: 'autoevals', slug: 'integrations/autoevals' },
             { label: 'Pydantic Evals', slug: 'integrations/pydantic-evals' },
           ],
         },
         {
           label: 'Configuration',
-          items: [
-            { label: 'JSON/YAML Config', slug: 'configuration/json-yaml' },
-            { label: 'OpenAI Format', slug: 'configuration/openai-format' },
-          ],
+          items: [{ label: 'JSON & YAML Config', slug: 'configuration/json-yaml' }],
         },
         {
           label: 'Testing',

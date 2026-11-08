@@ -13,10 +13,15 @@ so the model can rewrite a failing response.
 
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any
+from datetime import UTC, datetime
+from typing import Any, Literal
 
+from opentelemetry import trace
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.exceptions import ModelRetry
 from pydantic_ai.tools import RunContext
@@ -30,9 +35,19 @@ from pydantic_ai_guardrails._types import (
     OutputCheckFunc,
     OutputContextCheckFunc,
 )
-from pydantic_ai_guardrails._utils import maybe_await
+from pydantic_ai_guardrails._utils import maybe_await, trace_reasons
 
 logger = logging.getLogger('pydantic_ai_guardrails')
+_tracer = trace.get_tracer('pydantic_ai_guardrails')
+
+#: One JSON object per guardrail decision, for SIEM / compliance export. Silent
+#: until you attach a handler; a plain FileHandler produces JSON Lines:
+#: ``logging.getLogger('pydantic_ai_guardrails.audit').addHandler(logging.FileHandler('audit.jsonl'))``
+audit_logger = logging.getLogger('pydantic_ai_guardrails.audit')
+audit_logger.setLevel(logging.INFO)
+audit_logger.propagate = False  # keep JSON records out of the application's own logs
+
+Decision = Literal['pass', 'block', 'retry', 'warn', 'redact', 'error']
 
 __all__ = (
     'GuardrailCapability',
@@ -41,7 +56,70 @@ __all__ = (
     'InputGuardrail',
     'OutputGuardrail',
     'normalize_check_result',
+    'guardrail_span',
 )
+
+
+class _Span:
+    def __init__(self, span: trace.Span, name: str, run_id: str | None, trace_reasons: bool) -> None:
+        self._span = span
+        self._name = name
+        self._run_id = run_id
+        self._trace_reasons = trace_reasons
+        self.recorded = False
+
+    def record(self, decision: Decision, reason: str | None = None, exception_type: str | None = None) -> None:
+        self.recorded = True
+        self._span.set_attribute('guardrail.decision', decision)
+        if reason is not None and self._trace_reasons:
+            self._span.set_attribute('guardrail.reason', reason)
+        if audit_logger.hasHandlers():
+            span_ctx = self._span.get_span_context()
+            entry: dict[str, Any] = {
+                'timestamp': datetime.now(UTC).isoformat(),
+                'guardrail': self._name,
+                'decision': decision,
+                'run_id': self._run_id,
+                'trace_id': format(span_ctx.trace_id, '032x') if span_ctx.is_valid else None,
+                'span_id': format(span_ctx.span_id, '016x') if span_ctx.is_valid else None,
+            }
+            if exception_type is not None:
+                entry['exception_type'] = exception_type
+            if reason is not None and self._trace_reasons:
+                entry['reason'] = reason
+            audit_logger.info(json.dumps(entry))
+
+
+@contextmanager
+def guardrail_span(name: str, ctx: RunContext[Any] | None = None) -> Iterator[_Span]:
+    """Open an OpenTelemetry span ``guardrail <name>`` around one guardrail check.
+
+    Uses the global tracer provider, so the span shows up nested in pydantic-ai's
+    own agent trace (Logfire, or any OTel SDK). It is a no-op without an SDK.
+    ``guardrail.reason`` is recorded only when
+    ``PYDANTIC_AI_GUARDRAILS_TRACE_REASONS=1``, since reasons may contain user content.
+    Every decision is also written to :data:`audit_logger` (same reason rule).
+    """
+    reasons = trace_reasons()
+    # Guardrail exceptions carry the reason in their message, and OTel's automatic
+    # exception recording would copy it into an event and the status description.
+    # Unless reasons are enabled, record only the exception type.
+    with _tracer.start_as_current_span(
+        f'guardrail {name}',
+        attributes={'guardrail.name': name},
+        record_exception=reasons,
+        set_status_on_exception=reasons,
+    ) as span:
+        wrapper = _Span(span, name, getattr(ctx, 'run_id', None), reasons)
+        try:
+            yield wrapper
+        except BaseException as exc:
+            if not wrapper.recorded:  # the check itself errored (e.g. a judge or key function)
+                wrapper.record('error', exception_type=type(exc).__name__)
+            if not reasons:
+                span.set_attribute('guardrail.exception_type', type(exc).__name__)
+                span.set_status(trace.StatusCode.ERROR)
+            raise
 
 
 class GuardrailCapability(AbstractCapability[Any]):
@@ -97,14 +175,18 @@ class InputGuardrailBase(GuardrailCapability):
         if prompt is None:
             return
         text = prompt if isinstance(prompt, str) else str(prompt)
-        reason = await self.check(ctx, text)
-        if reason is None:
-            return
-        message = f'{self.name}: {reason}'
-        if self.on_fail == 'warn':
-            logger.warning(message)
-            return
-        raise InputBlocked(message, guardrail=self.name, reason=reason)
+        with guardrail_span(self.name, ctx) as span:
+            reason = await self.check(ctx, text)
+            if reason is None:
+                span.record('pass')
+                return
+            message = f'{self.name}: {reason}'
+            if self.on_fail == 'warn':
+                span.record('warn', reason)
+                logger.warning(message)
+                return
+            span.record('block', reason)
+            raise InputBlocked(message, guardrail=self.name, reason=reason)
 
 
 class OutputGuardrailBase(GuardrailCapability):
@@ -138,21 +220,27 @@ class OutputGuardrailBase(GuardrailCapability):
 
         text = output if isinstance(output, str) else str(output)
 
-        rewritten = await self.transform(ctx, output, text)
-        if rewritten is not output:
-            return rewritten
+        with guardrail_span(self.name, ctx) as span:
+            rewritten = await self.transform(ctx, output, text)
+            if rewritten is not output:
+                span.record('redact')
+                return rewritten
 
-        reason = await self.check(ctx, output, text)
-        if reason is None:
-            return output
+            reason = await self.check(ctx, output, text)
+            if reason is None:
+                span.record('pass')
+                return output
 
-        message = f'{self.name}: {reason}'
-        if self.on_fail == 'warn':
-            logger.warning(message)
-            return output
-        if self.on_fail == 'retry':
-            raise ModelRetry(message)
-        raise OutputBlocked(message, guardrail=self.name, reason=reason)
+            message = f'{self.name}: {reason}'
+            if self.on_fail == 'warn':
+                span.record('warn', reason)
+                logger.warning(message)
+                return output
+            if self.on_fail == 'retry':
+                span.record('retry', reason)
+                raise ModelRetry(message)
+            span.record('block', reason)
+            raise OutputBlocked(message, guardrail=self.name, reason=reason)
 
 
 @dataclass

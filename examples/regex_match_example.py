@@ -97,7 +97,7 @@ async def example_multiple_patterns_or() -> None:
         ],
         require_all=False,
     )
-    for output, should_pass, description in [
+    for output, _should_pass, description in [
         ('Phone: 555-123-4567', True, 'Has phone'),
         ('Email: user@example.com', True, 'Has email'),
         ('No contact info', False, 'Has neither'),

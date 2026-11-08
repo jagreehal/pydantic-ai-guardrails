@@ -57,6 +57,7 @@ async def example_evaluator_guardrail() -> None:
 
     try:
         from pydantic_evals.evaluators import Contains
+
         from pydantic_ai_guardrails.evals import evaluator_guardrail
 
         guard = evaluator_guardrail(Contains(value='Python', case_sensitive=False), kind='output')

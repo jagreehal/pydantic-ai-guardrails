@@ -1,169 +1,65 @@
 ---
-title: LLM Judge
-description: LLM-as-a-judge quality evaluation
+title: LlmJudge
+description: Grade output against natural-language criteria with a judge model
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
-The `llm_judge` guardrail uses another LLM to evaluate response quality against specified criteria.
-
-## Import
-
-```python
-from pydantic_ai_guardrails.guardrails.output import llm_judge
-```
-
-## Basic Usage
-
-```python
-from pydantic_ai_guardrails import GuardedAgent
-from pydantic_ai_guardrails.guardrails.output import llm_judge
-
-guarded_agent = GuardedAgent(
-    agent,
-    output_guardrails=[
-        llm_judge(
-            criteria='Is the response helpful and accurate?',
-            threshold=0.7,
-        ),
-    ],
-)
-```
+Runs a second Pydantic AI agent (the judge) that scores the output against your criteria.
 
 ## Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `criteria` | `str \| list[str]` | Required | Evaluation criteria |
-| `threshold` | `float` | `0.7` | Minimum passing score (0.0-1.0) |
-| `judge_model` | `str` | Same as agent | Model to use for judging |
-| `mode` | `'score' \| 'binary'` | `'score'` | Evaluation mode |
+| `criteria` | `str \| Sequence[str]` | required | What a good answer looks like |
+| `judge_model` | `Model \| str` | `'openai:gpt-4o-mini'` | Any Pydantic AI model name or `Model` instance |
+| `threshold` | `float` | `0.7` | Passing score, between 0 and 1 (`mode='score'` only) |
+| `mode` | `'score' \| 'binary'` | `'score'` | How to decide pass or fail |
+| `include_prompt` | `bool` | `True` | Show the user's prompt to the judge |
+| `system_prompt` | `str \| None` | `None` | Replace the judge's instructions |
+| `on_error` | `'raise' \| 'allow'` | `'raise'` | What to do when the judge itself fails |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+### Modes
+
+- `mode='score'`: passes when the judge's score is `>= threshold`.
+- `mode='binary'`: uses the judge's pass/fail decision only. `threshold` is ignored.
+
+### Judge errors
+
+If the judge call fails (network error, rate limit, invalid response), the default `on_error='raise'` raises `GuardrailFailed`. Set `on_error='allow'` to log the error and let the output pass.
 
 ## Examples
 
-### Single Criterion
-
 ```python
-guardrail = llm_judge(
-    criteria='Is the response helpful and addresses the user question?',
-    threshold=0.7,
-)
-```
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import LlmJudge
 
-### Multiple Criteria
-
-```python
-guardrail = llm_judge(
-    criteria=[
-        'Is the response factually accurate?',
-        'Is the tone professional?',
-        'Does it directly answer the question?',
-    ],
-    threshold=0.7,
-)
-```
-
-### Custom Judge Model
-
-```python
-# Use a faster/cheaper model for judging
-guardrail = llm_judge(
-    criteria='Is this response appropriate?',
-    judge_model='openai:gpt-4o-mini',
-    threshold=0.8,
-)
-```
-
-### Binary Mode
-
-```python
-# Pass/fail instead of scored
-guardrail = llm_judge(
-    criteria='Does this response contain medical advice?',
-    mode='binary',  # Returns 0 or 1
-    threshold=0.5,  # 0.5 = must pass
-)
-```
-
-## Violation Result
-
-When triggered, returns:
-
-```python
-{
-    'tripwire_triggered': True,
-    'message': 'Response failed quality evaluation',
-    'severity': 'medium',
-    'metadata': {
-        'score': 0.45,
-        'threshold': 0.7,
-        'criteria': ['Is the response helpful?'],
-    },
-    'suggestion': 'Provide a more complete and helpful response that directly addresses the question.',
-}
-```
-
-## Use Cases
-
-- **Quality assurance**: Ensure responses meet quality standards
-- **Brand voice**: Verify tone and style guidelines
-- **Compliance**: Check for policy-violating content
-- **Accuracy**: Evaluate factual correctness
-- **Completeness**: Ensure thorough answers
-
-<Aside type="tip">
-Use a faster, cheaper model for judging (like `gpt-4o-mini`) to reduce latency and cost. The judge doesn't need to be as capable as the main model.
-</Aside>
-
-## Combining with Auto-Retry
-
-LLM Judge works great with auto-retry:
-
-```python
-guarded_agent = GuardedAgent(
-    agent,
-    output_guardrails=[
-        llm_judge(
-            criteria='Is the response professional and helpful?',
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[
+        LlmJudge(
+            criteria=[
+                'Answers the question that was asked',
+                'Does not promise refunds or discounts',
+                'Professional tone',
+            ],
+            judge_model='openai:gpt-4o-mini',
             threshold=0.8,
         ),
     ],
-    max_retries=2,  # Let LLM improve quality
 )
 ```
 
-The judge's feedback helps the LLM understand what to improve.
-
-## Example Criteria
-
-### Customer Support
-
 ```python
-criteria=[
-    'Does the response address the customer issue?',
-    'Is the tone empathetic and professional?',
-    'Are next steps clearly provided?',
-]
+from pydantic_ai_guardrails import LlmJudge
+
+LlmJudge('Contains no medical advice', mode='binary', on_error='allow', on_fail='raise')
 ```
 
-### Technical Documentation
+Each check makes an extra model call, so it adds latency and cost to every run. Put cheaper guardrails first.
 
-```python
-criteria=[
-    'Is the explanation technically accurate?',
-    'Are code examples correct and runnable?',
-    'Is the language clear and unambiguous?',
-]
-```
+## Failure behaviour
 
-### Content Moderation
-
-```python
-criteria='Does this response comply with content policies and avoid harmful content?'
-```
-
-## Related
-
-- [Output Guardrails Guide](/guides/output-guardrails/)
-- [Auto-Retry](/guides/auto-retry/)
-- [autoevals Integration](/integrations/autoevals/)
+- `on_fail='retry'` (default): raises `ModelRetry` with the judge's score and reasoning, so the model can fix its answer.
+- `on_fail='raise'`: raises `OutputBlocked`.
+- `on_fail='warn'`: logs and returns the output.
+- Judge failure: `GuardrailFailed` with `on_error='raise'`; logged and passed with `on_error='allow'`.

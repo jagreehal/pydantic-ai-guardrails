@@ -4,13 +4,23 @@
     {
       "type": "DetectPII",
       "config": {
-        "types": ["email", "phone", "ssn", "credit_card", "ip_address"]
+        "types": [
+          "email",
+          "phone",
+          "ssn",
+          "credit_card",
+          "ip_address"
+        ]
       }
     },
     {
       "type": "DetectToxicity",
       "config": {
-        "categories": ["hate_speech", "threats", "personal_attacks"]
+        "categories": [
+          "hate_speech",
+          "threats",
+          "personal_attacks"
+        ]
       }
     },
     {
@@ -22,7 +32,12 @@
     {
       "type": "RedactSecrets",
       "config": {
-        "patterns": ["openai_api_key", "github_token", "credit_card"]
+        "patterns": [
+          "openai_api_key",
+          "anthropic_api_key",
+          "github_token",
+          "aws_access_key"
+        ]
       }
     },
     {
@@ -32,7 +47,11 @@
     {
       "type": "FilterToxicity",
       "config": {
-        "categories": ["profanity", "hate_speech", "offensive"]
+        "categories": [
+          "profanity",
+          "hate_speech",
+          "offensive"
+        ]
       }
     }
   ]

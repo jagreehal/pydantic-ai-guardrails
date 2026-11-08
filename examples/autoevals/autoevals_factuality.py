@@ -17,14 +17,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from examples._utils import agent_with_guardrails
+from examples._utils import autoevals_guardrail
 
 
 async def main() -> None:
     try:
         from autoevals.llm import Factuality
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails.evals import evaluator_guardrail
     except ImportError as e:
         print(f'❌ Missing dependency: {e}')
         print('\nInstall with: pip install pydantic-ai pydantic-ai-guardrails autoevals')
@@ -34,24 +33,21 @@ async def main() -> None:
     print('AUTOEVALS FACTUALITY GUARDRAIL DEMO')
     print('=' * 70)
 
-    factuality = evaluator_guardrail(
-        Factuality(model='gpt-4-turbo-preview'),
-        kind='output',
-        threshold=0.7,
-    )
-
-    guarded_agent = agent_with_guardrails(
-        Agent('openai:gpt-4', system_prompt='Answer questions accurately.'),
-        output_guardrails=[factuality],
-    )
-
+    # Factuality compares the output against a known-good reference answer.
     test_cases = [
-        ('What year did World War II end?', 'Historical fact'),
-        ('Who won the 2024 World Cup?', 'Future event (may fail factuality)'),
+        ('What year did World War II end?', 'World War II ended in 1945.'),
+        ('What is the capital of Australia?', 'The capital of Australia is Canberra.'),
     ]
 
-    for query, description in test_cases:
-        print(f'\n[{description}] {query}')
+    for query, expected in test_cases:
+        print(f'\n{query}')
+        guarded_agent = Agent(
+            'openai:gpt-4o',
+            instructions='Answer questions accurately.',
+            capabilities=[
+                autoevals_guardrail(Factuality(model='gpt-4o-mini'), threshold=0.6, expected=expected, on_fail='raise')
+            ],
+        )
         try:
             result = await guarded_agent.run(query)
             print(f'✓ Response: {result.output}')

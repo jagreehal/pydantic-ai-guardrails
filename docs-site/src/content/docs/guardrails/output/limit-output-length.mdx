@@ -1,0 +1,40 @@
+---
+title: LimitOutputLength
+description: Require output within character, word or sentence bounds
+---
+
+Requires the model's output to fall within the given bounds.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `min_chars` | `int \| None` | `None` | Minimum characters |
+| `max_chars` | `int \| None` | `None` | Maximum characters |
+| `min_words` | `int \| None` | `None` | Minimum words |
+| `max_words` | `int \| None` | `None` | Maximum words |
+| `min_sentences` | `int \| None` | `None` | Minimum sentences |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+Set at least one bound, or construction raises `ValueError`.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import LimitOutputLength
+
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[LimitOutputLength(min_words=50, max_words=200, min_sentences=3)],
+)
+
+result = agent.run_sync('Summarise the plot of Hamlet.')
+print(result.output)
+```
+
+## Failure behaviour
+
+- `on_fail='retry'` (default): raises `ModelRetry`. The model sees the reason and tries again, up to the agent's output retry budget (`Agent(retries={'output': N})`).
+- `on_fail='raise'`: raises `OutputBlocked` with `.guardrail` and `.reason`.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and returns the output unchanged.

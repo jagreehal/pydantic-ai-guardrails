@@ -1,0 +1,45 @@
+---
+title: MatchRegex
+description: Require output to match one or more patterns
+---
+
+Requires the output to match one pattern, or every pattern with `require_all=True`.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `patterns` | `str \| Sequence[str] \| Mapping[str, str]` | required | One pattern, a list, or a name-to-pattern mapping (names appear in failure reasons) |
+| `require_all` | `bool` | `False` | Every pattern must match |
+| `full_match` | `bool` | `False` | Match the whole output instead of searching within it |
+| `case_sensitive` | `bool` | `True` | Case-sensitive matching |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import MatchRegex
+
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[
+        MatchRegex(
+            {'ticket_id': r'TICKET-\d{4,}', 'sign_off': r'Kind regards'},
+            require_all=True,
+        ),
+    ],
+)
+```
+
+```python
+from pydantic_ai_guardrails import MatchRegex
+
+MatchRegex(r'\d{4}-\d{2}-\d{2}', full_match=True)  # output must be a bare ISO date
+```
+
+## Failure behaviour
+
+- `on_fail='retry'` (default): raises `ModelRetry`. The model sees the reason and tries again, up to the agent's output retry budget (`Agent(retries={'output': N})`).
+- `on_fail='raise'`: raises `OutputBlocked` with `.guardrail` and `.reason`.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and returns the output unchanged.

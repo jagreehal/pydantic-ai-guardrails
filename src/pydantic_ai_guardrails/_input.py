@@ -16,8 +16,10 @@ from typing import Any, Literal
 
 from pydantic_ai.tools import RunContext
 
+from pydantic_ai_guardrails import _backends
 from pydantic_ai_guardrails._base import InputGuardrailBase
 from pydantic_ai_guardrails._types import OnInputFail
+from pydantic_ai_guardrails._utils import check_known, check_unit_interval
 
 __all__ = (
     'PIIType',
@@ -46,20 +48,35 @@ _DEFAULT_PII_TYPES: tuple[PIIType, ...] = tuple(_PII_PATTERNS)
 class DetectPII(InputGuardrailBase):
     """Block prompts that contain personally identifiable information.
 
+    ``backend='regex'`` (default) needs no dependencies. ``backend='presidio'``
+    uses Microsoft Presidio (``pip install "pydantic-ai-guardrails[pii-detection]"``)
+    and reports entities scoring at least ``score_threshold``.
+
     ```python
     agent = Agent('openai:gpt-4o', capabilities=[DetectPII()])
     agent = Agent('openai:gpt-4o', capabilities=[DetectPII(types=['ssn', 'credit_card'])])
+    agent = Agent('openai:gpt-4o', capabilities=[DetectPII(backend='presidio')])
     ```
     """
 
     types: Sequence[PIIType] = _DEFAULT_PII_TYPES
+    backend: Literal['regex', 'presidio'] = 'regex'
+    score_threshold: float = 0.5
     on_fail: OnInputFail = 'raise'
 
     def __post_init__(self) -> None:
-        self._patterns = {t: re.compile(_PII_PATTERNS[t]) for t in self.types if t in _PII_PATTERNS}
+        check_known('PII type(s)', self.types, _PII_PATTERNS)
+        check_known('backend', [self.backend], ('regex', 'presidio'))
+        check_unit_interval('score_threshold', self.score_threshold)
+        if self.backend == 'presidio':
+            _backends.require('presidio_analyzer', 'pii-detection')
+        self._patterns = {t: re.compile(_PII_PATTERNS[t]) for t in self.types}
 
     async def check(self, ctx: RunContext[Any], text: str) -> str | None:
-        detected = [name for name, pattern in self._patterns.items() if pattern.search(text)]
+        if self.backend == 'presidio':
+            detected = await _backends.presidio_detect(text, self.types, self.score_threshold)
+        else:
+            detected = [name for name, pattern in self._patterns.items() if pattern.search(text)]
         if detected:
             return f'detected PII: {", ".join(detected)}'
         return None
@@ -95,35 +112,74 @@ _INJECTION_PATTERNS: dict[str, list[str]] = {
         r'print\s+(your|the)\s+(system\s+)?(prompt|instructions|rules)',
     ],
     'jailbreak': [
-        r'(DAN|do\s+anything\s+now)',
+        r'\b((?-i:DAN)|do\s+anything\s+now)\b',  # DAN is case-sensitive: 'Dan' is a name
         r'bypass\s+(your\s+)?(restrictions|limitations|rules|guidelines)',
         r'break\s+(your\s+)?(restrictions|limitations|rules|guidelines)',
         r'ignore\s+(your\s+)?(restrictions|limitations|rules|guidelines|ethics|safety)',
     ],
 }
 
+#: Extra patterns checked only at ``sensitivity='high'``: obfuscated or indirect
+#: overrides that are more likely to hit benign text.
+_HIGH_SENSITIVITY_PATTERNS: list[str] = [
+    r'(developer|god|admin|debug)\s+mode',
+    r'(decode|translate|convert)\s+(this|the\s+following)?\s*(from\s+)?(base64|rot13|hex|binary)\b.*\b(follow|execute|run|do)',
+    r'(base64|rot13|hex)[-\s]?(encoded|decoded)?\s+(instructions|prompt|command)',
+    r'repeat\s+(the\s+)?(text|words|everything)\s+(above|before)',
+    r'(hidden|secret|encoded)\s+(instructions?|commands?|prompt)',
+    r'\bsystem\s*:\s*',
+    r'from\s+now\s+on,?\s+you\s+(will|must|are)',
+    r'no\s+(restrictions|filters|limits|rules)\s+(apply|anymore)',
+]
+
 
 @dataclass
 class DetectPromptInjection(InputGuardrailBase):
     """Block prompts that look like instruction-override / jailbreak attempts.
 
-    ``sensitivity='low'`` only checks the most blatant patterns; ``'medium'`` and
-    ``'high'`` check the full catalogue. ``extra_patterns`` adds your own regexes.
+    Regex backend (default): ``sensitivity='low'`` checks only blatant
+    ignore-instructions and jailbreak patterns, ``'medium'`` the full catalogue,
+    and ``'high'`` adds obfuscation patterns (developer mode, decode-and-follow,
+    "repeat the text above"). ``extra_patterns`` adds your own regexes.
+
+    ``backend='transformers'`` adds a Hugging Face classifier
+    (``pip install "pydantic-ai-guardrails[prompt-injection]"``) that blocks when
+    its injection probability is at least ``threshold``. ``granularity='sentence'``
+    (default) classifies sentences, 3-sentence runs and full windows, which finds
+    short injections inside long prompts. ``granularity='window'`` classifies
+    full-context windows only, which suits code-heavy prompts. A segment that
+    would still be truncated blocks. The regex catalogue for ``sensitivity`` still runs too.
     """
 
     sensitivity: Literal['low', 'medium', 'high'] = 'medium'
     extra_patterns: Sequence[str] = ()
+    backend: Literal['regex', 'transformers'] = 'regex'
+    model: str = _backends.DEFAULT_INJECTION_MODEL
+    threshold: float = 0.5
+    granularity: Literal['sentence', 'window'] = 'sentence'
     on_fail: OnInputFail = 'raise'
 
     def __post_init__(self) -> None:
+        check_known('sensitivity', [self.sensitivity], ('low', 'medium', 'high'))
+        check_known('backend', [self.backend], ('regex', 'transformers'))
+        check_unit_interval('threshold', self.threshold)
+        check_known('granularity', [self.granularity], ('sentence', 'window'))
+        if self.backend == 'transformers':
+            _backends.require('transformers', 'prompt-injection')
         if self.sensitivity == 'low':
             raw = [*_INJECTION_PATTERNS['ignore_instructions'], *_INJECTION_PATTERNS['jailbreak']]
         else:
             raw = [p for patterns in _INJECTION_PATTERNS.values() for p in patterns]
+            if self.sensitivity == 'high':
+                raw.extend(_HIGH_SENSITIVITY_PATTERNS)
         raw.extend(self.extra_patterns)
         self._patterns = [re.compile(p, re.IGNORECASE) for p in raw]
 
     async def check(self, ctx: RunContext[Any], text: str) -> str | None:
+        if self.backend == 'transformers':
+            score = await _backends.injection_score(text, self.model, self.granularity)
+            if score >= self.threshold:
+                return f'potential prompt injection (classifier score {score:.2f})'
         matches = sum(1 for pattern in self._patterns if pattern.search(text))
         if matches:
             return f'potential prompt injection ({matches} pattern(s) matched)'
@@ -131,7 +187,7 @@ class DetectPromptInjection(InputGuardrailBase):
 
 
 _TOXICITY_CATEGORIES: dict[str, list[str]] = {
-    'profanity': [r'\b(f[u\*][c\*]k|sh[i\*]t|d[a\*]mn|h[e\*]ll|b[i\*]tch|[a\*]ss|cr[a\*]p)\w*\b'],
+    'profanity': [r'\b(f[u\*][c\*]k\w*|sh[i\*]t\w*|d[a\*]mn\w*|h[e\*]ll|b[i\*]tch\w*|[a\*]ss(?:hole)?s?|cr[a\*]p\w*)\b'],
     'hate_speech': [
         r'\b(hate|despise|loathe)\s+(you|them|those|people|users)\b',
         r'\byou\s+(suck|are\s+stupid|are\s+dumb|are\s+worthless)\b',
@@ -149,24 +205,38 @@ _TOXICITY_CATEGORIES: dict[str, list[str]] = {
 
 @dataclass
 class DetectToxicity(InputGuardrailBase):
-    """Block prompts containing toxic content (profanity, hate, threats, attacks)."""
+    """Block prompts containing toxic content (profanity, hate, threats, attacks).
+
+    ``backend='detoxify'`` scores with the Detoxify model
+    (``pip install "pydantic-ai-guardrails[toxicity-detection]"``) and flags each
+    category scoring at least ``threshold``.
+    """
 
     categories: Sequence[str] = tuple(_TOXICITY_CATEGORIES)
+    backend: Literal['regex', 'detoxify'] = 'regex'
+    threshold: float = 0.5
     on_fail: OnInputFail = 'raise'
 
     def __post_init__(self) -> None:
+        check_known('toxicity categor(ies)', self.categories, _TOXICITY_CATEGORIES)
+        check_known('backend', [self.backend], ('regex', 'detoxify'))
+        check_unit_interval('threshold', self.threshold)
+        if self.backend == 'detoxify':
+            _backends.require('detoxify', 'toxicity-detection')
         self._patterns = {
             category: [re.compile(p, re.IGNORECASE) for p in _TOXICITY_CATEGORIES[category]]
             for category in self.categories
-            if category in _TOXICITY_CATEGORIES
         }
 
     async def check(self, ctx: RunContext[Any], text: str) -> str | None:
-        detected = [
-            category
-            for category, patterns in self._patterns.items()
-            if any(p.search(text) for p in patterns)
-        ]
+        if self.backend == 'detoxify':
+            detected = await _backends.detoxify_detect(text, self.categories, self.threshold)
+        else:
+            detected = [
+                category
+                for category, patterns in self._patterns.items()
+                if any(p.search(text) for p in patterns)
+            ]
         if detected:
             return f'toxic content: {", ".join(detected)}'
         return None
@@ -277,7 +347,7 @@ class RateLimit(InputGuardrailBase):
 
     ``key`` derives a bucket from the :class:`~pydantic_ai.tools.RunContext`
     (e.g. ``lambda ctx: ctx.deps.user_id``); without it, a single global bucket
-    is used. The default store is process-wide; pass your own ``store`` to isolate.
+    is used. Errors raised by ``key`` propagate. The default store is process-wide; pass your own ``store`` to isolate.
     """
 
     max_requests: int = 0
@@ -291,13 +361,7 @@ class RateLimit(InputGuardrailBase):
             raise ValueError('RateLimit needs max_requests > 0')
 
     async def check(self, ctx: RunContext[Any], text: str) -> str | None:
-        if self.key is not None:
-            try:
-                bucket = self.key(ctx)
-            except Exception:  # noqa: BLE001 - a bad key fn must not crash the run
-                bucket = 'default'
-        else:
-            bucket = 'global'
+        bucket = self.key(ctx) if self.key is not None else 'global'
         allowed, count = self.store.check_and_increment(bucket, self.max_requests, self.window_seconds)
         if not allowed:
             return f'rate limit exceeded: {count}/{self.max_requests} per {self.window_seconds:g}s'

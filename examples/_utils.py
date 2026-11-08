@@ -108,3 +108,26 @@ async def guard_allows_output(
 # Back-compat aliases from the v1 example migration
 shield_allows_input = guard_allows_input
 shield_allows_output = guard_allows_output
+
+
+def autoevals_guardrail(scorer: Any, *, threshold: float = 0.7, on_fail: Any = 'retry', **scorer_kwargs: Any) -> Any:
+    """Wrap a Braintrust autoevals scorer as an output guardrail.
+
+    autoevals scorers are not pydantic-evals Evaluators, so they go through
+    OutputGuardrail rather than ``pydantic_ai_guardrails.evals.evaluator_guardrail``.
+    Passes when ``score >= threshold``; ``scorer_kwargs`` (e.g. ``expected=``) go to the scorer.
+    """
+    from pydantic_ai_guardrails import OutputGuardrail
+
+    name = type(scorer).__name__
+
+    async def guard(ctx: Any, output: Any) -> bool | str:
+        prompt = ctx.prompt if isinstance(ctx.prompt, str) else ''
+        result = await scorer.eval_async(output=str(output), input=prompt, **scorer_kwargs)
+        score = result.score or 0.0
+        if score >= threshold:
+            return True
+        rationale = (result.metadata or {}).get('rationale', '')
+        return f'{name} score {score:.2f} below {threshold}. {rationale}'.strip()
+
+    return OutputGuardrail(context_guard=guard, on_fail=on_fail, label=f'autoevals {name}')

@@ -1,0 +1,33 @@
+---
+title: OpenAI Moderation
+description: Block content the OpenAI moderation endpoint flags
+---
+
+`OpenAIModerationInput` and `OpenAIModerationOutput` call OpenAI's [moderation endpoint](https://platform.openai.com/docs/guides/moderation) on the prompt or the output.
+
+```bash
+pip install 'pydantic-ai-guardrails[openai]'
+export OPENAI_API_KEY=sk-...
+```
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails.adapters import OpenAIModerationInput, OpenAIModerationOutput
+
+agent = Agent(
+    'anthropic:claude-sonnet-5-5',
+    capabilities=[
+        OpenAIModerationInput(),  # blocks anything the endpoint flags
+        OpenAIModerationOutput(categories=['self-harm', 'violence']),  # only these categories
+    ],
+)
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `model` | `'omni-moderation-latest'` | Moderation model |
+| `categories` | `None` | Fail only for these categories, e.g. `harassment`, `hate`, `illicit`, `self-harm`, `sexual`, `violence` and their sub-categories. `None` uses the endpoint's overall `flagged`. Unknown names raise `ValueError` |
+| `client` | `None` | An `openai.AsyncOpenAI` client. Created on first use if omitted |
+| `on_fail` | `'raise'` (input) / `'retry'` (output) | Failure behaviour |
+
+Both adapters are regular guardrails, so they emit [OpenTelemetry spans](../opentelemetry/), write [audit records](../audit-log/), and work in [config files](../../configuration/json-yaml/) (`type: OpenAIModerationInput`).

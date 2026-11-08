@@ -1,0 +1,38 @@
+---
+title: LimitInputLength
+description: Reject prompts over a character or token budget
+---
+
+Rejects prompts longer than a character limit, a token limit, or both.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_chars` | `int \| None` | `None` | Maximum characters |
+| `max_tokens` | `int \| None` | `None` | Maximum tokens |
+| `tokenizer` | `str` | `'cl100k_base'` | tiktoken encoding name |
+| `on_fail` | `'raise' \| 'warn'` | `'raise'` | Raise `InputBlocked` or log and continue |
+
+Set at least one of `max_chars` or `max_tokens`, or construction raises `ValueError`.
+
+Token counts are exact when tiktoken is installed (`pip install 'pydantic-ai-guardrails[tokens]'`). Without it, the guardrail estimates tokens from the word count.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import InputBlocked, LimitInputLength
+
+agent = Agent('openai:gpt-4o', capabilities=[LimitInputLength(max_chars=2000, max_tokens=500)])
+
+try:
+    agent.run_sync('word ' * 5000)
+except InputBlocked as e:
+    print(e.reason)  # exceeds 2000 char limit by ...
+```
+
+## Failure behaviour
+
+- `on_fail='raise'`: raises `InputBlocked`; `.reason` says which limit was exceeded and by how much.
+- `on_fail='warn'`: logs and continues.

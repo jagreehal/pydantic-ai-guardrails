@@ -7,8 +7,8 @@ This directory contains working examples demonstrating how to integrate external
 These examples show how to compose multi-layer security using:
 
 1. **Native guardrails** - Fast, zero-dependency policy enforcement
-2. **[llm-guard](https://github.com/protectai/llm-guard)** - Battle-tested security scanners by Protect AI
-3. **[autoevals](https://github.com/braintrustdata/autoevals)** - LLM-powered evaluation suite by Braintrust
+2. **llm-guard** - ML security scanners (`pip install llm-guard`)
+3. **autoevals** - LLM-based evaluation scorers (`pip install autoevals`)
 
 ## Installation
 
@@ -120,9 +120,18 @@ Layer 3: autoevals (LLM-powered quality)
     └─ RAG faithfulness
 ```
 
+### Built-in adapters
+
+`pydantic_ai_guardrails.adapters` ships `LlmGuardInput` / `LlmGuardOutput` and `OpenAIModerationInput` / `OpenAIModerationOutput`, so you can attach llm-guard scanners or OpenAI moderation without writing a wrapper.
+
+### Tool policy and multiple agents
+
+- `mcp_tool_policy.py`: allowlist, block and approval-gate prefixed MCP toolsets with `RestrictTools` globs.
+- `multi_agent_guardrails.py`: per-agent guardrails, gated delegation and a shared `LimitCost` budget. Runs offline on `TestModel`.
+
 ## Integration Patterns (v2)
 
-Guardrails are native pydantic-ai capabilities — attach them with `capabilities=[...]`:
+Guardrails are native pydantic-ai capabilities. Attach them with `capabilities=[...]`:
 
 ```python
 from pydantic_ai import Agent
@@ -281,7 +290,6 @@ Some scanners require specific models. If you see errors, check:
 
 ## Additional Resources
 
-- **Integration Guide**: [../llm_guard.md](../llm_guard.md) - Comprehensive integration architecture
 - **llm-guard docs**: https://llm-guard.com/
 - **autoevals docs**: https://www.braintrust.dev/docs/autoevals
 - **Pydantic AI docs**: https://ai.pydantic.dev/

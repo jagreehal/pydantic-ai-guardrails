@@ -1,0 +1,83 @@
+---
+title: OpenTelemetry & Logfire
+description: Trace every guardrail check with OpenTelemetry spans
+---
+
+Every guardrail check emits an OpenTelemetry span. There is no library-specific telemetry API to configure: if your process has an OTel tracer provider, the spans are exported. If it does not, they are no-ops.
+
+## Span shape
+
+| Field | Value |
+|-------|-------|
+| Span name | `guardrail <Name>`, e.g. `guardrail DetectPII`, or the `label` of a custom guardrail |
+| `guardrail.name` | `DetectPII` |
+| `guardrail.decision` | `pass`, `block`, `retry`, `warn` or `redact` |
+| `guardrail.reason` | The failure reason. Only recorded when `PYDANTIC_AI_GUARDRAILS_TRACE_REASONS=1` is set |
+| `guardrail.exception_type` | When a guardrail raises with reasons disabled: the exception class name only (e.g. `InputBlocked`) |
+
+`guardrail.name` and `guardrail.decision` are always recorded. `guardrail.reason` is off by default because reasons can quote user content (a matched keyword, a detected email). With reasons off, a raised guardrail exception sets the span status to `ERROR` but records no exception event, stacktrace or status description, since the exception message contains the reason. Exception messages leave the reason out too (`InputBlocked: input blocked (reason on .reason)`), because pydantic-ai records them on its own agent span even with content recording off. The reason is always on `.reason` in code. Retry reasons are different: they are feedback the model needs, so pydantic-ai records them as conversation content (`gen_ai.input.messages`, retried tool spans) whenever its content recording is on, the default, alongside the prompt itself. To keep them out of the trace, turn content recording off: `Agent(..., capabilities=[Instrumentation(InstrumentationSettings(include_content=False)), ...])` or `logfire.instrument_pydantic_ai(include_content=False)`. Turn reasons on where your trace backend is allowed to hold that data:
+
+```bash
+export PYDANTIC_AI_GUARDRAILS_TRACE_REASONS=1
+```
+
+`decision` tells you what happened: `block` for `InputBlocked`, `OutputBlocked`, `BudgetExceeded`, `ToolDenied` and `GuardrailFailed`; `retry` for `ModelRetry`; `warn` for `on_fail='warn'`; `redact` when `RedactSecrets` rewrote the output.
+
+The spans use `opentelemetry-api`, which Pydantic AI already depends on, and are created inside the current context, so they nest under the agent run span.
+
+## Logfire
+
+```bash
+pip install logfire
+```
+
+```python
+import logfire
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import DetectPII, DetectPromptInjection, LimitOutputLength
+
+logfire.configure()
+logfire.instrument_pydantic_ai()
+
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[DetectPromptInjection(), DetectPII(), LimitOutputLength(min_chars=50)],
+)
+
+agent.run_sync('Tell me about Lisbon')
+```
+
+The trace shows the agent run with `guardrail DetectPromptInjection`, `guardrail DetectPII` and `guardrail LimitOutputLength` spans nested inside it, next to the model request spans. Filter on `guardrail.decision != 'pass'` to find every block, retry and warning.
+
+## Any OpenTelemetry SDK
+
+```bash
+pip install 'pydantic-ai-guardrails[telemetry]'   # installs opentelemetry-sdk
+```
+
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+from pydantic_ai import Agent
+from pydantic_ai.models.test import TestModel
+from pydantic_ai_guardrails import DetectPII, InputBlocked
+
+provider = TracerProvider()
+provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+trace.set_tracer_provider(provider)
+
+agent = Agent(TestModel(), capabilities=[DetectPII()])
+try:
+    agent.run_sync('my SSN is 123-45-6789')
+except InputBlocked:
+    pass
+# prints a span named "guardrail DetectPII" with guardrail.decision = "block"
+# (add guardrail.reason by setting PYDANTIC_AI_GUARDRAILS_TRACE_REASONS=1)
+```
+
+Swap `ConsoleSpanExporter` for an OTLP exporter to send spans to Jaeger, Honeycomb, Datadog, Grafana Tempo or any OTLP backend. Add `Agent(..., instrument=True)` or `Agent.instrument_all()` to get Pydantic AI's own run and model spans as parents.
+
+## Logs
+
+Warnings (`on_fail='warn'`, `AsyncGuardrail(mode='monitoring')`, `LlmJudge(on_error='allow')`) also go to the standard `pydantic_ai_guardrails` logger.

@@ -1,0 +1,61 @@
+---
+title: ValidateJson
+description: Require text output to be valid JSON, optionally matching a schema
+---
+
+Requires text output to parse as JSON, optionally with required keys or a JSON Schema. If you can use `output_type=SomeModel` instead, prefer that: Pydantic AI validates structured output natively. `ValidateJson` is for agents that must return JSON as text.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `require_valid` | `bool` | `True` | Fail when the output is not valid JSON |
+| `extract_markdown` | `bool` | `True` | Pull JSON out of a fenced ```json code block first |
+| `required_keys` | `Sequence[str]` | `()` | Keys the top-level object must contain |
+| `schema` | `Mapping \| None` | `None` | A JSON Schema the value must match |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+### Schema validation
+
+With `jsonschema` installed (`pip install 'pydantic-ai-guardrails[json-schema]'`), `schema` gets full JSON Schema validation: `properties`, `required`, `enum`, `items`, formats and so on.
+
+Without `jsonschema`, only a bare `{"type": ...}` schema is supported. A schema that uses any other keyword raises `ImportError` at construction, with the install command.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import ValidateJson
+
+agent = Agent(
+    'openai:gpt-4o',
+    instructions='Reply with a JSON object only.',
+    capabilities=[
+        ValidateJson(
+            schema={
+                'type': 'object',
+                'properties': {
+                    'name': {'type': 'string'},
+                    'age': {'type': 'integer', 'minimum': 0},
+                },
+                'required': ['name', 'age'],
+            },
+        ),
+    ],
+)
+
+result = agent.run_sync('Invent a person with a name and an age.')
+print(result.output)
+```
+
+```python
+from pydantic_ai_guardrails import ValidateJson
+
+ValidateJson(required_keys=['id', 'status'])  # no extra needed
+```
+
+## Failure behaviour
+
+- `on_fail='retry'` (default): raises `ModelRetry`. The model sees the reason and tries again, up to the agent's output retry budget (`Agent(retries={'output': N})`).
+- `on_fail='raise'`: raises `OutputBlocked` with `.guardrail` and `.reason`.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and returns the output unchanged.

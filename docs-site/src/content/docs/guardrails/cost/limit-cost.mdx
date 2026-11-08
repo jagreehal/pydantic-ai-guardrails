@@ -1,0 +1,55 @@
+---
+title: LimitCost
+description: Stop a run when token usage or dollar cost crosses a budget
+---
+
+Checks cumulative token usage before every model request and stops the run once a budget is crossed. A multi-step agent stops at the next request, instead of after it has finished overspending.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_input_tokens` | `int \| None` | `None` | Budget for input (prompt) tokens |
+| `max_output_tokens` | `int \| None` | `None` | Budget for output tokens |
+| `max_total_tokens` | `int \| None` | `None` | Budget for input plus output tokens |
+| `max_cost_usd` | `float \| None` | `None` | Dollar budget for this run's model responses |
+| `on_unknown_price` | `'raise' \| 'ignore'` | `'raise'` | What to do when a model has no known price |
+
+Set at least one budget, or construction raises `ValueError`.
+
+## Dollar budgets
+
+`max_cost_usd` prices every model response in the run with pydantic-ai's built-in price tables (`ModelResponse.cost()`, backed by `genai-prices`):
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import LimitCost
+
+agent = Agent('openai:gpt-4o', capabilities=[LimitCost(max_cost_usd=0.50)])
+```
+
+Spend is counted as each response arrives and is also rebuilt from the message history, and the higher figure wins. A history processor that trims messages can't hide spend, and neither can durable execution re-creating the capability. Each run has its own total; earlier runs passed in `message_history` don't count.
+
+A model with no known price (a local or custom model) can't be held to a dollar budget, so by default the run stops with `BudgetExceeded`. Pass `on_unknown_price='ignore'` to skip unpriced responses.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import BudgetExceeded, LimitCost
+
+agent = Agent('openai:gpt-4o', capabilities=[LimitCost(max_total_tokens=20_000, max_output_tokens=4_000)])
+
+try:
+    result = agent.run_sync('Research and summarise the history of the printing press.')
+except BudgetExceeded as e:
+    print(e)  # total token budget exceeded: 20412/20000
+```
+
+Usage counts the whole run, including tool-call round trips. To budget across several runs, pass the same `usage=` object to each `agent.run()`. When a tool runs another agent, pass `usage=ctx.usage` so the delegate's tokens count too (see [Multiple Agents](../../../guides/multi-agent/)).
+
+Pydantic AI's own `UsageLimits` (`agent.run(..., usage_limits=UsageLimits(...))`) does a similar job per call. `LimitCost` attaches the budget to the agent, so every run gets it, and raises a `GuardrailError` subclass you can catch with your other guardrail errors.
+
+## Failure behaviour
+
+Raises `BudgetExceeded` (a `GuardrailError`), which stops the run. The message names the budget and the usage at the time.

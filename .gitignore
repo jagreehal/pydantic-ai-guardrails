@@ -61,3 +61,6 @@ Thumbs.db
 
 # Documentation
 docs-site/node_modules/
+
+# Local test-run reports
+.executable-stories/

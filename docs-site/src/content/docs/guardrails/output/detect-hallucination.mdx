@@ -1,0 +1,38 @@
+---
+title: DetectHallucination
+description: Flag hedging language and placeholder data in output
+---
+
+A heuristic check for two common hallucination signals:
+
+- **Uncertainty language**: "I think", "probably", "as far as I know", "not sure".
+- **Placeholder data**: `example.com` URLs, `user@example.com` emails, `"John Doe"`.
+
+It does not check facts. For that, use [LlmJudge](../llm-judge/) with a grounding criterion.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `check_uncertainty` | `bool` | `True` | Flag hedging language |
+| `check_placeholders` | `bool` | `True` | Flag placeholder data |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import DetectHallucination
+
+agent = Agent(
+    'openai:gpt-4o',
+    instructions='Answer from the provided records only. Say "unknown" if the records do not say.',
+    capabilities=[DetectHallucination(check_uncertainty=False, on_fail='warn')],
+)
+```
+
+## Failure behaviour
+
+- `on_fail='retry'` (default): raises `ModelRetry`. The model sees the reason and tries again, up to the agent's output retry budget (`Agent(retries={'output': N})`).
+- `on_fail='raise'`: raises `OutputBlocked` with `.guardrail` and `.reason`.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and returns the output unchanged.

@@ -1,7 +1,7 @@
 """Tool Allowlist Example
 
-Demonstrates RestrictTools with blocked=[tools not in allowlist] to enforce
-least-privilege tool access.
+Demonstrates RestrictTools(allowed=[...]) to enforce least-privilege tool access.
+Names accept fnmatch globs, e.g. allowed=['github_*'] for a prefixed MCP toolset.
 """
 
 import asyncio
@@ -33,9 +33,8 @@ ALL_TOOLS = [
 
 
 def restrict_to_allowlist(allowed: list[str]) -> RestrictTools:
-    """Block every tool that is not in the allowlist."""
-    blocked = [name for name in ALL_TOOLS if name not in allowed]
-    return RestrictTools(blocked=blocked)
+    """Hide every tool that is not in the allowlist."""
+    return RestrictTools(allowed=allowed)
 
 
 def register_tools(agent: Agent) -> None:

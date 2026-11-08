@@ -1,0 +1,39 @@
+---
+title: Streaming
+description: How guardrails behave when you stream output
+---
+
+## Redaction while streaming
+
+[RedactSecrets](../../guardrails/output/redact-secrets/) redacts the model's streamed response at its source, before pydantic-ai hands it to anything. Every way of reading a stream therefore sees redacted text:
+
+- `result.stream_text()` deltas and full text, including the first chunk, which pydantic-ai takes from the response accumulated so far;
+- `result.stream_output()` partial outputs and `result.stream_response()` / `result.response`;
+- `agent.run_stream_events()`, `agent.iter()` and `event_stream_handler=`;
+- realtime sessions;
+- thinking parts, alongside text;
+- the message history, so a secret isn't stored or sent back to the model on the next turn.
+
+Several `RedactSecrets` on one agent (say, one per team's patterns) compose: each keeps its own hold-back state and sees the text the previous one released.
+
+A secret can arrive split across chunks (`ghp_A1b2` … `C3d4…`), so it holds back the last `stream_holdback` characters (default 128) until enough text has arrived to rule out a secret crossing the boundary. Then it releases the redacted text. The held-back tail is flushed when the text part ends, so the consumer still gets the full, redacted answer.
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import RedactSecrets
+
+agent = Agent('openai:gpt-4o', capabilities=[RedactSecrets()])
+
+async with agent.run_stream('Show me the deploy config') as result:
+    async for chunk in result.stream_text(delta=True):
+        print(chunk, end='')  # keys arrive as [REDACTED], never partially
+```
+
+Things to know:
+
+- A secret that is still being written (a JWT, an `sk-` key, a PEM block without its END line) stays held back until it ends, whatever its length. The final output is always fully redacted.
+- To cover realtime sessions, plain `agent.run()` runs the model in streaming mode while stream redaction is on; the result is the same. `RedactSecrets(redact_stream=False)` turns stream redaction off, and the final output is still redacted.
+
+## Blocking guardrails
+
+Output guardrails that block or retry (`LimitOutputLength`, `ValidateJson`, `LlmJudge`, …) run on the **final** output, not on partial chunks, because a half-written answer would fail most checks. The text you've streamed is what the model produced, and the guardrail decides once the output is complete. If you can't show unvetted text, don't stream it to the user directly: buffer it and show the final, validated result.

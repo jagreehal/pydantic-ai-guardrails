@@ -1,0 +1,40 @@
+---
+title: Multiple Agents
+description: Guardrails across agent delegation
+---
+
+pydantic-ai has no handoff primitive. One agent delegates to another by running it inside a tool, so guardrails don't cross that boundary implicitly. Place them at each boundary:
+
+1. **Each agent carries its own guardrails.** A specialist checks its own input and output, whoever calls it.
+2. **The parent decides whether it may delegate.** Gate the delegate tool with [RestrictTools](../../guardrails/tools/restrict-tools/) and [ValidateToolArgs](../../guardrails/tools/validate-tool-args/).
+3. **Delegates spend from the parent's budget.** Pass `usage=ctx.usage` to the delegate's `run()` so the parent's [LimitCost](../../guardrails/cost/limit-cost/) counts their tokens.
+
+```python
+from pydantic_ai import Agent, RunContext
+from pydantic_ai_guardrails import DetectPII, LimitCost, RestrictTools, ValidateToolArgs
+
+billing = Agent('openai:gpt-4o-mini', capabilities=[DetectPII(types=['ssn', 'credit_card'])])
+
+
+def one_customer_at_a_time(tool_name: str, args: dict) -> str | None:
+    return 'delegate one customer question at a time' if 'all customers' in args.get('question', '') else None
+
+
+triage = Agent(
+    'openai:gpt-4o',
+    capabilities=[
+        RestrictTools(allowed=['ask_billing']),
+        ValidateToolArgs(check=one_customer_at_a_time, tools=['ask_billing']),
+        LimitCost(max_total_tokens=50_000),
+    ],
+)
+
+
+@triage.tool
+async def ask_billing(ctx: RunContext, question: str) -> str:
+    return (await billing.run(question, usage=ctx.usage)).output
+```
+
+A delegate's `InputBlocked`, `OutputBlocked` or `BudgetExceeded` propagates out of the parent's `run()`, so you handle it in one place. To let the parent recover instead, catch it inside the tool and raise `ModelRetry` with guidance.
+
+The runnable version, which works offline on `TestModel`, is in [`examples/multi_agent_guardrails.py`](https://github.com/jagreehal/pydantic-ai-guardrails/blob/main/examples/multi_agent_guardrails.py).
