@@ -1,0 +1,87 @@
+---
+title: RestrictTools
+description: Allow, hide or approval-gate the tools an agent can call
+---
+
+Controls which tools the model can see and call.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `allowed` | `list[str] \| None` | `None` | Allowlist. When set, every tool not listed is hidden from the model |
+| `blocked` | `list[str]` | `[]` | Tools hidden from the model |
+| `require_approval` | `list[str]` | `[]` | Tools that run only after `approval` returns `True` |
+| `approval` | `Callable[[str, dict], bool \| Awaitable[bool]] \| None` | `None` | Called with `(tool_name, args)`; sync or async |
+
+All three lists accept [fnmatch](https://docs.python.org/3/library/fnmatch.html) globs: `'github_*'`, `'*_delete'`, `'fs_?'`.
+
+Hidden tools are removed in `prepare_tools`, so the model never sees them. If the model calls one anyway, the call is rejected with `ModelRetry`.
+
+## Examples
+
+### Allowlist
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import RestrictTools
+
+agent = Agent('openai:gpt-4o', capabilities=[RestrictTools(allowed=['search', 'get_weather'])])
+```
+
+### Allow one MCP toolset
+
+Prefix each MCP toolset's tool names, then allow that prefix with a glob:
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+from pydantic_ai_guardrails import RestrictTools
+
+github = MCPToolset('http://localhost:8000/mcp').prefixed('github')  # tools become github_*
+jira = MCPToolset('http://localhost:8001/mcp').prefixed('jira')
+
+agent = Agent(
+    'openai:gpt-4o',
+    toolsets=[github, jira],
+    capabilities=[
+        RestrictTools(
+            allowed=['github_*'],            # hide every jira_* tool
+            blocked=['github_delete_*'],     # and destructive github tools
+        ),
+    ],
+)
+```
+
+### Human approval
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import RestrictTools
+
+
+async def approve(tool_name: str, args: dict) -> bool:
+    answer = input(f'Allow {tool_name}({args})? [y/N] ')
+    return answer.strip().lower() == 'y'
+
+
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[RestrictTools(require_approval=['send_*', 'delete_*'], approval=approve)],
+)
+
+
+@agent.tool_plain
+def send_email(to: str, body: str) -> str:
+    return f'sent to {to}'
+```
+
+See [Human-in-the-Loop](../../../guides/human-in-the-loop/) for more approval patterns.
+
+## Failure behaviour
+
+| Situation | Result |
+|-----------|--------|
+| Model calls a hidden or blocked tool | `ModelRetry`: the model picks another path |
+| `approval` returns `False` | `ModelRetry` saying the tool was not approved |
+| Tool needs approval but `approval` is `None` | `ToolDenied` (stops the run; carries `.tool_name` and `.reason`) |

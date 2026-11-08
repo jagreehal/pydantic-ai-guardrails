@@ -1,0 +1,66 @@
+---
+title: Async Guardrails
+description: Run a guard alongside each model request with AsyncGuardrail
+---
+
+`AsyncGuardrail` runs an async check against the message history around **each model request**, not just once per run. Use it for slow checks, such as a moderation API or a classifier service, that you do not want to add to every request's latency.
+
+```python
+import asyncio
+
+from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage
+from pydantic_ai_guardrails import AsyncGuardrail, GuardrailFailed
+
+
+async def call_moderation_api(text: str) -> bool:
+    """Stand-in for your moderation client (OpenAI moderation, Perspective, an internal service)."""
+    await asyncio.sleep(0.2)
+    return 'attack plan' in text.lower()
+
+
+async def moderation(messages: list[ModelMessage]) -> bool | str:
+    text = str(messages[-1])
+    flagged = await call_moderation_api(text)
+    return 'flagged by moderation API' if flagged else True
+
+
+agent = Agent('openai:gpt-4o', capabilities=[AsyncGuardrail(guard=moderation, mode='concurrent')])
+
+try:
+    result = agent.run_sync('Hello')
+except GuardrailFailed as e:
+    print(e.guardrail, e.reason)
+```
+
+## Modes
+
+| Mode | Behaviour | Latency | On failure |
+|------|-----------|---------|------------|
+| `'concurrent'` (default) | The guard and the model request run together. If the guard fails first, the model request is cancelled | Max of the two | `GuardrailFailed` |
+| `'blocking'` | The guard must pass before the model is called | Guard + model | `GuardrailFailed`, model never called |
+| `'monitoring'` | The model is called; the guard runs afterwards and failures are only logged | Guard + model, never blocks | Warning in the `pydantic_ai_guardrails` logger |
+
+In `'concurrent'` mode, if the model finishes first, the guardrail waits for the guard and still raises if it fails. The response is never returned unchecked.
+
+## Guard signature
+
+The guard is an async function that receives the request messages, or `(ctx, messages)` if it takes two positional parameters:
+
+```python
+from pydantic_ai import RunContext
+from pydantic_ai.messages import ModelMessage
+
+
+async def guard(ctx: RunContext, messages: list[ModelMessage]) -> bool | str | tuple[bool, str]:
+    ...
+```
+
+It returns `True` or `None` to pass, `False` or a reason string to fail, or `(passed, reason)`.
+
+## AsyncGuardrail or InputGuardrail?
+
+- `InputGuardrail` runs once, on the user's prompt, before the run starts.
+- `AsyncGuardrail` runs on every model request, including the ones after tool calls, so it also sees tool results.
+
+`AsyncGuardrail` takes a function, so it cannot be built from a [config file](../../configuration/json-yaml/).

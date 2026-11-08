@@ -1,9 +1,9 @@
 ---
 title: Pydantic AI Guardrails
-description: Production-ready guardrails for Pydantic AI agents
+description: Guardrails for Pydantic AI agents, built as native capabilities
 template: splash
 hero:
-  tagline: Production-ready guardrails for Pydantic AI agents. Validate inputs, protect outputs, and build safer AI applications.
+  tagline: Guardrails for Pydantic AI, built as native capabilities. Block bad prompts, fix bad answers, gate tools and cap spend with one line per rule.
   actions:
     - text: Get Started
       link: getting-started/installation/
@@ -16,94 +16,85 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Why Pydantic AI Guardrails?
-
-<CardGrid>
-  <Card title="Pydantic AI Native" icon="seti:python">
-    Follows Pydantic AI's patterns and integrates seamlessly with your existing agents. Uses the same dependency injection and context patterns you already know.
-  </Card>
-  <Card title="16 Built-in Guardrails" icon="approve-check">
-    Ready-to-use guardrails for PII detection, prompt injection, secrets, toxicity, LLM-as-a-judge, tool validation, and more.
-  </Card>
-  <Card title="Auto-Retry with Feedback" icon="sync">
-    When output guardrails fail, automatically retry with structured feedback so the LLM can self-correct.
-  </Card>
-  <Card title="Observable" icon="magnifier">
-    Built-in OpenTelemetry support for Logfire and other observability platforms. Trace every guardrail execution.
-  </Card>
-</CardGrid>
-
-## Quick Example
+## Quick example
 
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_guardrails import GuardedAgent
-from pydantic_ai_guardrails.guardrails.input import pii_detector, prompt_injection
-from pydantic_ai_guardrails.guardrails.output import secret_redaction
+from pydantic_ai_guardrails import DetectPII, DetectPromptInjection, LimitCost, RedactSecrets
 
-# Create an agent with guardrails
-agent = Agent('openai:gpt-4o')
-guarded_agent = GuardedAgent(
-    agent,
-    input_guardrails=[pii_detector(), prompt_injection()],
-    output_guardrails=[secret_redaction()],
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[
+        DetectPromptInjection(sensitivity='high'),
+        DetectPII(),
+        RedactSecrets(),
+        LimitCost(max_total_tokens=100_000),
+    ],
 )
 
-result = await guarded_agent.run('Your prompt here')
+result = agent.run_sync('Plan a trip to Lisbon')
+print(result.output)
 ```
+
+Every guardrail is a `pydantic_ai.capabilities.AbstractCapability`. You add it with `Agent(capabilities=[...])`, the same way you add Pydantic AI's own capabilities. There is no wrapper class and no separate run method.
+
+## Why this library
+
+<CardGrid>
+  <Card title="Pydantic AI native" icon="seti:python">
+    Guardrails hook into the agent lifecycle (`before_run`, `prepare_tools`, `after_output_process`). Errors subclass Pydantic AI's `AgentRunError`.
+  </Card>
+  <Card title="18 built-in guardrails" icon="approve-check">
+    PII, prompt injection, toxicity, keywords, length, rate limits, secrets, JSON, regex, refusals, hallucination heuristics, LLM judge, tool restrictions and token budgets.
+  </Card>
+  <Card title="Self-correcting output" icon="sync">
+    Output guardrails raise `ModelRetry` by default, so the model sees the reason and rewrites its answer.
+  </Card>
+  <Card title="Traced with OpenTelemetry" icon="magnifier">
+    Each check emits a `guardrail <Name>` span. With Logfire or any OTel SDK, guardrail spans nest inside the agent trace.
+  </Card>
+</CardGrid>
 
 ## Features
 
 <CardGrid>
-  <Card title="Input Validation" icon="warning">
-    Block harmful prompts before they reach your model. Detect PII, prompt injection attacks, toxicity, and more.
+  <Card title="Input guardrails" icon="warning">
+    Stop a run before the model is called. Raise `InputBlocked`, or log with `on_fail='warn'`.
   </Card>
-  <Card title="Output Protection" icon="approve-check">
-    Validate model responses before returning to users. Catch leaked secrets, hallucinations, and policy violations.
+  <Card title="Tool and cost guardrails" icon="setting">
+    Allow, hide or approval-gate tools with glob patterns. Stop the run once a token budget is crossed.
   </Card>
-  <Card title="Custom Guardrails" icon="pencil">
-    Write your own guardrails with simple async functions. Full access to dependencies and context.
+  <Card title="Optional ML backends" icon="rocket">
+    Regex detectors need no dependencies. Switch to Presidio, Detoxify or a transformers classifier with one argument.
   </Card>
-  <Card title="Parallel Execution" icon="rocket">
-    Run multiple guardrails concurrently for better performance. Just set `parallel=True`.
+  <Card title="Custom guardrails" icon="pencil">
+    Pass any sync or async function to `InputGuardrail` or `OutputGuardrail`, or subclass a base class.
   </Card>
-  <Card title="Config-Based Setup" icon="document">
-    Load guardrails from JSON or YAML files. Compatible with OpenAI's guardrails config format.
+  <Card title="Config files" icon="document">
+    Describe a guardrail set in JSON or YAML and build it with `build_guardrails(load_config(path))`.
   </Card>
-  <Card title="Testing Utilities" icon="puzzle">
-    MockAgent, assertion helpers, and test case generators for thorough guardrail testing.
+  <Card title="Testing helpers" icon="puzzle">
+    `pydantic_ai_guardrails.testing` provides async assertions built on Pydantic AI's `TestModel`.
   </Card>
 </CardGrid>
 
-## Comparison
-
-| Feature | pydantic-ai-guardrails | OpenAI Guardrails | LangChain Middleware |
-|---------|:----------------------:|:-----------------:|:--------------------:|
-| Pydantic AI native | Yes | No | No |
-| Auto-retry with feedback | Yes | No | No |
-| Parallel execution | Yes | Yes | Partial |
-| Config file loading | Yes | Yes | No |
-| LLM-as-a-judge | Yes | No | Custom |
-| Tool validation | Yes | No | No |
-| OpenTelemetry | Yes | No | Via LangSmith |
-
-## Next Steps
+## Next steps
 
 <CardGrid>
   <Card title="Installation" icon="laptop">
-    Get up and running with pip install.
+    Install the package and any optional extras.
     [Install now](getting-started/installation/)
   </Card>
   <Card title="Quick Start" icon="rocket">
-    Build your first guarded agent in 5 minutes.
+    Add your first guardrails to an agent.
     [Start building](getting-started/quick-start/)
   </Card>
   <Card title="Built-in Guardrails" icon="list-format">
-    Explore all 16 ready-to-use guardrails.
+    Browse all 18 built-in guardrails.
     [View guardrails](guardrails/overview/)
   </Card>
   <Card title="Custom Guardrails" icon="pencil">
-    Learn to write your own validation logic.
+    Write your own checks.
     [Create custom](guides/custom-guardrails/)
   </Card>
 </CardGrid>

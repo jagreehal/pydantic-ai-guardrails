@@ -1,0 +1,41 @@
+---
+title: RequireToolUse
+description: Require the run to have called specific tools
+---
+
+Requires the run to have called a tool before producing its answer. Use it to stop the model answering from memory when it should look something up.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `tools` | `str \| Sequence[str] \| None` | `None` | Tool names. `None` means any tool call satisfies the check |
+| `require_all` | `bool` | `False` | Every named tool must have been called, not just one |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import RequireToolUse
+
+agent = Agent('openai:gpt-4o', capabilities=[RequireToolUse(tools=['search_docs'])])
+
+
+@agent.tool_plain
+def search_docs(query: str) -> str:
+    """Search the product documentation."""
+    return 'Reset the router by holding the button for 10 seconds.'
+
+
+result = agent.run_sync('How do I reset my router?')
+print(result.output)
+```
+
+With `retry`, the retry message names the missing tool, so the model usually calls it on the next attempt.
+
+## Failure behaviour
+
+- `on_fail='retry'` (default): raises `ModelRetry`. The model sees the reason and tries again, up to the agent's output retry budget (`Agent(retries={'output': N})`).
+- `on_fail='raise'`: raises `OutputBlocked` with `.guardrail` and `.reason`.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and returns the output unchanged.

@@ -1,0 +1,46 @@
+---
+title: BlockKeywords
+description: Block prompts containing specific words or patterns
+---
+
+Blocks prompts that contain any of the given keywords.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `keywords` | `Sequence[str] \| str` | required | Keywords to block (at least one) |
+| `case_sensitive` | `bool` | `False` | Match case exactly |
+| `whole_words` | `bool` | `False` | Match on word boundaries only, so `pass` does not match `password` |
+| `regex` | `bool` | `False` | Treat each keyword as a regular expression |
+| `on_fail` | `'raise' \| 'warn'` | `'raise'` | Raise `InputBlocked` or log and continue |
+
+An empty keyword list or an invalid regex raises `ValueError` at construction.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import BlockKeywords, InputBlocked
+
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[BlockKeywords(['password', 'api key'], whole_words=True)],
+)
+
+try:
+    agent.run_sync('What is the admin password?')
+except InputBlocked as e:
+    print(e.reason)  # blocked keyword(s): 'password'
+```
+
+```python
+from pydantic_ai_guardrails import BlockKeywords
+
+BlockKeywords([r'\bdrop\s+table\b', r'\brm\s+-rf\b'], regex=True)
+```
+
+## Failure behaviour
+
+- `on_fail='raise'`: raises `InputBlocked`; `.reason` lists the matched keywords.
+- `on_fail='warn'`: logs and continues.

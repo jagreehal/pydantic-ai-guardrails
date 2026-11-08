@@ -12,7 +12,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from examples._utils import agent_with_guardrails
 from pydantic_ai import Agent
 
 from pydantic_ai_guardrails import GuardrailConfig, InputBlocked, build_guardrails, load_config

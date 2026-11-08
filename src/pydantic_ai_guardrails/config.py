@@ -22,6 +22,7 @@ agent = Agent('openai:gpt-4o', capabilities=build_guardrails(load_config('guardr
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,10 +47,12 @@ from pydantic_ai_guardrails._output import (
     LlmJudge,
     MatchRegex,
     RedactSecrets,
+    RequireGrounding,
     RequireToolUse,
     ValidateJson,
 )
 from pydantic_ai_guardrails._tool import RestrictTools
+from pydantic_ai_guardrails.adapters import OpenAIModerationInput, OpenAIModerationOutput
 
 __all__ = ('GuardrailConfig', 'load_config', 'build_guardrails', 'REGISTRY')
 
@@ -71,12 +74,20 @@ _GUARDRAILS: tuple[type[AbstractCapability[Any]], ...] = (
     BlockRefusals,
     RequireToolUse,
     LlmJudge,
+    RequireGrounding,
     # Tool and cost
     RestrictTools,
     LimitCost,
+    # Adapters (scanner objects make LlmGuardInput/Output code-only)
+    OpenAIModerationInput,
+    OpenAIModerationOutput,
 )
 
 #: Maps a config ``type`` to the capability class that implements it.
+#:
+#: Guardrails that take callables (``InputGuardrail``, ``OutputGuardrail``,
+#: ``ValidateToolArgs``, ``AsyncGuardrail``, and ``RestrictTools``' ``approval``)
+#: cannot be expressed in JSON/YAML; add them in code alongside the built list.
 REGISTRY: dict[str, type[AbstractCapability[Any]]] = {cls.__name__: cls for cls in _GUARDRAILS}
 
 
@@ -89,12 +100,21 @@ class GuardrailConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> GuardrailConfig:
+        unknown = set(data) - {'version', 'guardrails'}
+        if unknown:
+            raise ValueError(f'unknown config key(s): {", ".join(sorted(unknown))}')
         version = data.get('version', 1)
         if version != 1:
             raise ValueError(f'unsupported config version: {version}')
         guardrails = data.get('guardrails', [])
         if not isinstance(guardrails, list):
             raise ValueError("'guardrails' must be a list")
+        for i, item in enumerate(guardrails):
+            if not isinstance(item, dict):
+                raise ValueError(f'guardrails[{i}] must be a mapping')
+            extra = set(item) - {'type', 'config'}
+            if extra:
+                raise ValueError(f'guardrails[{i}]: unknown key(s) {", ".join(sorted(extra))} (expected type, config)')
         return cls(version=version, guardrails=guardrails)
 
 
@@ -128,5 +148,16 @@ def build_guardrails(config: GuardrailConfig | dict[str, Any]) -> list[AbstractC
         cls = REGISTRY.get(type_name)
         if cls is None:
             raise ValueError(f'unknown guardrail type: {type_name!r} (known: {", ".join(sorted(REGISTRY))})')
-        capabilities.append(cls(**item.get('config', {})))
+        params = item.get('config') or {}
+        known = {f.name for f in dataclasses.fields(cls)}
+        unknown = set(params) - known
+        if unknown:
+            raise ValueError(
+                f'{type_name}: unknown config key(s) {", ".join(sorted(unknown))} '
+                f'(known: {", ".join(sorted(known))})'
+            )
+        try:
+            capabilities.append(cls(**params))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f'{type_name}: {exc}') from exc
     return capabilities

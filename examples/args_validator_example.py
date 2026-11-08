@@ -25,7 +25,6 @@ from pydantic_ai_guardrails.tool_validators import (
     args_schema_validator,
 )
 
-
 # --- Schema-based validation ---
 
 class WeatherParams(BaseModel):

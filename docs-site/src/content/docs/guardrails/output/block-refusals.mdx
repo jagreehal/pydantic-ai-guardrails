@@ -1,0 +1,48 @@
+---
+title: BlockRefusals
+description: Reject canned refusal responses
+---
+
+Rejects output that looks like a canned refusal ("I cannot help with that", "As an AI language model, I can't"). With the default `retry`, the model gets a second chance to answer.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `patterns` | `Sequence[str]` | built-in refusal patterns | Regexes that indicate a refusal. Passing a list replaces the defaults |
+| `case_sensitive` | `bool` | `False` | Case-sensitive matching |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import BlockRefusals
+
+agent = Agent(
+    'openai:gpt-4o',
+    instructions='You are a support agent for Acme routers.',
+    capabilities=[BlockRefusals()],
+)
+```
+
+```python
+from pydantic_ai.models.test import TestModel
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import BlockRefusals, OutputBlocked
+
+agent = Agent(
+    TestModel(custom_output_text="I'm sorry, but I can't help with that."),
+    capabilities=[BlockRefusals(on_fail='raise')],
+)
+try:
+    agent.run_sync('Reset my router')
+except OutputBlocked as e:
+    print(e.reason)  # refusal detected (1 pattern(s) matched)
+```
+
+## Failure behaviour
+
+- `on_fail='retry'` (default): raises `ModelRetry`. The model sees the reason and tries again, up to the agent's output retry budget (`Agent(retries={'output': N})`).
+- `on_fail='raise'`: raises `OutputBlocked` with `.guardrail` and `.reason`.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and returns the output unchanged.

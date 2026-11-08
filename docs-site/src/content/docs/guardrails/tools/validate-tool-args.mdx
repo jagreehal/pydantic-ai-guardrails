@@ -1,0 +1,78 @@
+---
+title: ValidateToolArgs
+description: Check tool arguments before a tool runs
+---
+
+Runs a check against a tool's arguments before the tool executes. A failing check raises `ModelRetry`, so the model corrects its arguments and calls again.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `check` | `Callable[[str, dict], str \| None]` | required | Called with `(tool_name, args)`. Return a reason string to reject or `None` to allow. Sync or async |
+| `tools` | `list[str] \| None` | `None` | Only check these tools. `None` checks every tool |
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import ValidateToolArgs
+
+
+def no_system_paths(tool_name: str, args: dict) -> str | None:
+    path = str(args.get('path', ''))
+    if path.startswith(('/etc', '/root', '/sys')):
+        return f'{path} is outside the allowed directories; use a path under /data'
+    return None
+
+
+agent = Agent(
+    'openai:gpt-4o',
+    capabilities=[ValidateToolArgs(check=no_system_paths, tools=['read_file'])],
+)
+
+
+@agent.tool_plain
+def read_file(path: str) -> str:
+    with open(path) as f:
+        return f.read()
+```
+
+## Per-tool validators
+
+To declare validation on the tool itself, pass one of these helpers as `args_validator`. They also raise `ModelRetry` on failure.
+
+| Helper | Validates with |
+|--------|----------------|
+| `args_schema_validator(schema)` | A Pydantic model |
+| `args_custom_validator(fn)` | `fn(args) -> str \| None` |
+| `args_allowlist_validator(allowed_values)` | A dict of argument name to allowed values |
+
+```python
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, RunContext
+from pydantic_ai_guardrails import args_allowlist_validator, args_schema_validator
+
+agent = Agent('openai:gpt-4o')
+
+
+class WeatherArgs(BaseModel):
+    location: str = Field(max_length=50)
+    units: str = Field(pattern='^(celsius|fahrenheit)$')
+
+
+@agent.tool(args_validator=args_schema_validator(WeatherArgs))
+def get_weather(ctx: RunContext, location: str, units: str = 'celsius') -> str:
+    return f'Sunny in {location}'
+
+
+@agent.tool(args_validator=args_allowlist_validator({'env': ['staging', 'dev']}))
+def deploy(ctx: RunContext, env: str) -> str:
+    return f'deployed to {env}'
+```
+
+`ValidateToolArgs` takes a function, so it cannot be built from a [config file](../../../configuration/json-yaml/).
+
+## Failure behaviour
+
+A returned reason raises `ModelRetry(reason)`. The tool does not run, and the model gets the reason as feedback. If it keeps failing, Pydantic AI stops once the tool's retries are used up.

@@ -18,6 +18,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from examples._utils import agent_with_guardrails
+
 from pydantic_ai_guardrails import InputGuardrail
 
 

@@ -1,124 +1,60 @@
 ---
 title: Installation
-description: Install Pydantic AI Guardrails and its optional dependencies
+description: Install pydantic-ai-guardrails and its optional extras
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-
-## Basic Installation
-
-Install `pydantic-ai-guardrails` using pip:
-
-<Tabs>
-  <TabItem label="pip">
-    ```bash
-    pip install pydantic-ai-guardrails
-    ```
-  </TabItem>
-  <TabItem label="uv">
-    ```bash
-    uv add pydantic-ai-guardrails
-    ```
-  </TabItem>
-  <TabItem label="poetry">
-    ```bash
-    poetry add pydantic-ai-guardrails
-    ```
-  </TabItem>
-</Tabs>
-
-This installs the core library with all built-in guardrails.
-
-## Optional Dependencies
-
-Additional features are available through optional dependencies:
-
-### Telemetry (Logfire/OpenTelemetry)
-
-For observability and tracing:
-
 ```bash
-pip install pydantic-ai-guardrails[telemetry]
+pip install pydantic-ai-guardrails
 ```
 
-This adds:
-- `opentelemetry-api`
-- `opentelemetry-sdk`
-
-### Pydantic Evals Integration
-
-To use `pydantic_evals` evaluators as guardrails:
+or with uv:
 
 ```bash
-pip install pydantic-ai-guardrails[evals]
+uv add pydantic-ai-guardrails
 ```
 
-This adds:
-- `pydantic-evals`
+Requires Python 3.11+ and Pydantic AI 2.66+. The core package has no extra dependencies: every built-in detector works out of the box with regex.
 
-### All Features
+## Optional extras
 
-Install everything:
+| Extra | Installs | Enables |
+|-------|----------|---------|
+| `pii-detection` | Presidio | `DetectPII(backend='presidio')` |
+| `toxicity-detection` | Detoxify | `DetectToxicity(backend='detoxify')`, `FilterToxicity(backend='detoxify')` |
+| `prompt-injection` | transformers with torch | `DetectPromptInjection(backend='transformers')` |
+| `llm-guard` | llm-guard (Python < 3.13) | `adapters.LlmGuardInput` / `LlmGuardOutput`. Not part of `all`, since llm-guard pins its own transformers and presidio versions |
+| `openai` | openai | `adapters.OpenAIModerationInput` / `OpenAIModerationOutput` |
+| `json-schema` | jsonschema | Full JSON Schema validation in `ValidateJson(schema=...)` |
+| `yaml` | PyYAML | YAML files in `load_config()` |
+| `tokens` | tiktoken | Exact token counts in `LimitInputLength(max_tokens=...)` |
+| `telemetry` | opentelemetry-sdk | An OTel SDK to export guardrail spans |
+| `evals` | pydantic-evals | The `pydantic_ai_guardrails.evals` adapters |
+| `all` | everything above except `llm-guard` | |
 
 ```bash
-pip install pydantic-ai-guardrails[all]
+pip install 'pydantic-ai-guardrails[pii-detection,json-schema,yaml]'
 ```
 
-## Third-Party Integrations
+ML `threshold` and `score_threshold` values must be in [0, 1]; anything else raises `ValueError`.
 
-For additional guardrail capabilities, you can install these complementary libraries:
+If you ask for a backend whose dependency is missing, the guardrail raises `ImportError` with the `pip install` command when you construct it, not halfway through a run.
 
-### llm-guard
-
-Battle-tested ML models for prompt injection, toxicity, and sensitive data detection:
-
-```bash
-pip install llm-guard
-```
-
-See [llm-guard integration](/integrations/llm-guard/) for usage.
-
-### autoevals
-
-LLM-powered evaluations from Braintrust:
-
-```bash
-pip install autoevals
-```
-
-See [autoevals integration](/integrations/autoevals/) for usage.
-
-## Requirements
-
-- **Python**: 3.10 or higher
-- **pydantic-ai**: 1.39.0 or higher
-
-## Verify Installation
-
-Check that everything is installed correctly:
+## Verify
 
 ```python
-import pydantic_ai_guardrails
+from pydantic_ai import Agent
+from pydantic_ai.models.test import TestModel
+from pydantic_ai_guardrails import DetectPII, InputBlocked
 
-print(pydantic_ai_guardrails.__version__)
+agent = Agent(TestModel(), capabilities=[DetectPII()])
+
+try:
+    agent.run_sync('my SSN is 123-45-6789')
+except InputBlocked as e:
+    print(e.guardrail, e.reason)  # DetectPII detected PII: ssn
 ```
 
-You can also verify the available guardrails:
+## Next steps
 
-```python
-from pydantic_ai_guardrails.guardrails.input import (
-    length_limit,
-    pii_detector,
-    prompt_injection,
-)
-from pydantic_ai_guardrails.guardrails.output import (
-    secret_redaction,
-    llm_judge,
-)
-
-print("Installation successful!")
-```
-
-## Next Steps
-
-Now that you have `pydantic-ai-guardrails` installed, head to the [Quick Start](/getting-started/quick-start/) guide to create your first guarded agent.
+- [Quick Start](../quick-start/)
+- [Built-in guardrails](../../guardrails/overview/)

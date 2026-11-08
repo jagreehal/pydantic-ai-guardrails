@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from examples._utils import agent_with_guardrails, get_model_name
+from examples._utils import autoevals_guardrail, get_model_name
 
 
 async def main() -> None:
@@ -25,7 +25,6 @@ async def main() -> None:
         from autoevals import Factuality, init
         from openai import OpenAI
         from pydantic_ai import Agent
-        from pydantic_ai_guardrails.evals import evaluator_guardrail
     except ImportError as e:
         print(f'❌ Missing dependency: {e}')
         print('\nInstall with: pip install pydantic-ai pydantic-ai-guardrails autoevals')
@@ -43,19 +42,19 @@ async def main() -> None:
     client = OpenAI(base_url=base_url, api_key=os.environ.get('OLLAMA_API_KEY', 'ollama'))
     init(client=client)
 
-    factuality = evaluator_guardrail(
-        Factuality(model=eval_model),
-        kind='output',
-        threshold=0.6,
-    )
-
-    guarded_agent = agent_with_guardrails(
-        Agent(get_model_name(), system_prompt='Answer questions accurately.'),
-        output_guardrails=[factuality],
-    )
-
-    for query in ('What is the capital of France?', 'What year did World War II end?'):
+    cases = [
+        ('What is the capital of France?', 'The capital of France is Paris.'),
+        ('What year did World War II end?', 'World War II ended in 1945.'),
+    ]
+    for query, expected in cases:
         print(f'\nQuery: {query}')
+        guarded_agent = Agent(
+            get_model_name(),
+            instructions='Answer questions accurately.',
+            capabilities=[
+                autoevals_guardrail(Factuality(model=eval_model), threshold=0.6, expected=expected, on_fail='raise')
+            ],
+        )
         try:
             result = await guarded_agent.run(query)
             print(f'✓ Response: {result.output}')

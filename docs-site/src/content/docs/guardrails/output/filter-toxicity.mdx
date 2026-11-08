@@ -1,0 +1,44 @@
+---
+title: FilterToxicity
+description: Reject toxic model output
+---
+
+Rejects output containing profanity, hate speech, threats or offensive language. For prompts, use [DetectToxicity](../../input/detect-toxicity/).
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `categories` | `Sequence[str]` | all four | Any of `profanity`, `hate_speech`, `threats`, `offensive` |
+| `backend` | `'regex' \| 'detoxify'` | `'regex'` | Detection engine |
+| `threshold` | `float` | `0.5` | Minimum Detoxify score, in [0, 1] (Detoxify backend only) |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | See below |
+
+An unknown category, or a `threshold` outside [0, 1] or NaN, raises `ValueError` at construction. Note the output categories differ from the input ones: output has `offensive`, input has `personal_attacks`.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import FilterToxicity
+
+agent = Agent('openai:gpt-4o', capabilities=[FilterToxicity(categories=['profanity', 'offensive'])])
+```
+
+### Detoxify backend
+
+```bash
+pip install 'pydantic-ai-guardrails[toxicity-detection]'
+```
+
+```python
+from pydantic_ai_guardrails import FilterToxicity
+
+FilterToxicity(backend='detoxify', threshold=0.5, on_fail='raise')
+```
+
+## Failure behaviour
+
+- `on_fail='retry'` (default): raises `ModelRetry`. The model sees the reason and tries again, up to the agent's output retry budget (`Agent(retries={'output': N})`).
+- `on_fail='raise'`: raises `OutputBlocked` with `.guardrail` and `.reason`.
+- `on_fail='warn'`: logs to the `pydantic_ai_guardrails` logger and returns the output unchanged.

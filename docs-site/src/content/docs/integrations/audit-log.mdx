@@ -1,0 +1,28 @@
+---
+title: Audit Log
+description: A JSON record of every guardrail decision
+---
+
+Every guardrail decision is logged as one JSON object on the standard-library logger `pydantic_ai_guardrails.audit`. The logger doesn't propagate to your application logs and is silent until you attach a handler. A plain `FileHandler` gives you JSON Lines, ready for a SIEM:
+
+```python
+import logging
+
+logging.getLogger('pydantic_ai_guardrails.audit').addHandler(logging.FileHandler('guardrails-audit.jsonl'))
+```
+
+```json
+{"timestamp": "2026-11-08T18:40:12.481Z", "guardrail": "DetectPII", "decision": "block", "run_id": "0193…", "trace_id": "4bf9…", "span_id": "00f0…"}
+```
+
+| Field | Value |
+|-------|-------|
+| `timestamp` | UTC, ISO 8601 |
+| `guardrail` | Guardrail name (or `label`) |
+| `decision` | `pass`, `block`, `retry`, `warn`, `redact`, or `error` when the check itself raised |
+| `run_id` | The pydantic-ai run |
+| `trace_id`, `span_id` | Correlate with the [OpenTelemetry trace](../opentelemetry/), when an SDK is configured |
+| `exception_type` | For `error` decisions |
+| `reason` | Only with `PYDANTIC_AI_GUARDRAILS_TRACE_REASONS=1`, because reasons can quote user content |
+
+Any `logging.Handler` works, for example a `SysLogHandler`, a queue handler, or your log shipper's handler.

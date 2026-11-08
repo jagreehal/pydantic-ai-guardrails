@@ -1,0 +1,67 @@
+---
+title: RequireGrounding
+description: Require a RAG answer's claims to be supported by its sources
+---
+
+Checks that what the model says is backed by the material it retrieved. By default the sources are the results of the tool calls made in the current run, so a retrieval tool needs no extra wiring. Tool results from earlier runs passed in `message_history` are ignored.
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `sources` | `Callable[[RunContext], Sequence[str]] \| None` | `None` | Supply sources yourself (sync or async). `None` uses the run's tool results |
+| `min_overlap` | `float` | `0.5` | Share of a claim's content words that must appear in the sources |
+| `min_supported` | `float` | `0.8` | Share of claims that must be supported |
+| `min_words` | `int` | `3` | Sentences with fewer content words aren't treated as claims |
+| `require_citations` | `bool` | `False` | Every claim must also carry a citation marker |
+| `citation_pattern` | `str` | `r'\[\d+\]'` | What counts as a citation marker |
+| `on_fail` | `'retry' \| 'raise' \| 'warn'` | `'retry'` | Failure behaviour |
+
+`min_overlap` and `min_supported` must be in [0, 1].
+
+## How it decides
+
+Each output sentence with at least `min_words` content words is a claim. Content words are lower-cased words of four or more letters that aren't stop words, plus every number, since dates, amounts and IDs are where fabrications usually show up. A claim is supported when at least `min_overlap` of its content words appear somewhere in the sources.
+
+The check fails when:
+
+- fewer than `min_supported` of the claims are supported (the reason quotes up to three unsupported claims, so a retry can fix them);
+- there are no sources at all;
+- `require_citations=True` and a claim has no citation marker.
+
+This is a lexical heuristic. It catches invented names, numbers and facts that never appear in the sources. It doesn't catch a paraphrase that changes the meaning, so pair it with [LlmJudge](../llm-judge/) when semantic faithfulness matters.
+
+## Examples
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_guardrails import RequireGrounding
+
+agent = Agent('openai:gpt-4o', capabilities=[RequireGrounding()])
+
+@agent.tool_plain
+def search_docs(query: str) -> str:
+    return 'The Eiffel Tower was completed in 1889 and is 330 metres tall.'
+
+# An answer quoting 1889 / 330 metres passes; one inventing an architect or a date is retried.
+```
+
+Sources from your own dependencies, with citations required:
+
+```python
+from pydantic_ai import Agent, RunContext
+from pydantic_ai_guardrails import RequireGrounding
+
+agent = Agent(
+    'openai:gpt-4o',
+    deps_type=list[str],
+    instructions='Answer only from the numbered documents and cite them like [1].',
+    capabilities=[RequireGrounding(sources=lambda ctx: ctx.deps, require_citations=True)],
+)
+```
+
+`RequireGrounding` takes no callables by default, so it also works from a [config file](../../../configuration/json-yaml/).
+
+## Failure behaviour
+
+With the default `on_fail='retry'`, the reason goes back to the model as feedback. `'raise'` stops the run with `OutputBlocked`; `'warn'` logs and continues.
